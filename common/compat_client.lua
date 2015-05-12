@@ -75,6 +75,8 @@ function _G.iter(t)
 				end, t:GetEnumerator()
 			end
 		end
+	elseif type(t) ~= 'table' then
+		scplog('type error', type(t))
 	end
 	return pairs(t)
 end

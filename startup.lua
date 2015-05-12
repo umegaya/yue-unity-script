@@ -13,10 +13,11 @@ local field
 function Initialize(f, field_data)
 	field = ObjectWrapper.Wrap(f, "fields/field_base.lua");
 	field:initialize(field_data)
+	field_update = field.update
 end
 
 function Enter(id, peer, user_data)
-	field:enter(id, peer, user_data)
+	field:login(id, peer, user_data)
 end
 
 function Update(dt)

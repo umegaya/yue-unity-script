@@ -14,9 +14,12 @@ function table.merge(self, t, deep)
 end
 
 -- create new class instance
-function _M.new()
+function _M.new(parent)
 	local t = {}
 	t.__index = t
+	if parent then
+		table.merge(t, parent)
+	end
 	return t
 end
 
