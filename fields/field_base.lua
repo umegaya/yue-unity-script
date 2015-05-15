@@ -20,8 +20,8 @@ end
 function field_base:login(id, peer, user_data)
 	scplog('enter: user_id', id)
 	local user = ObjectFactory.Create("user")
-	user:initialize(id, peer, user_data, self)
-	user:play(self:init_event())
+	user:initialize(id, peer, user_data)
+	user:init_event(self)
 end
 -- exit user when field is finished
 function field_base:logout(user)
@@ -29,7 +29,7 @@ function field_base:logout(user)
 	self:exit(user)
 	user:close()
 end
-
+-- enter arbiter object into x, y of field
 function field_base:enter(object, x, y)
 	local c = self:CellAt(x, y)
 	if c then
@@ -37,7 +37,7 @@ function field_base:enter(object, x, y)
 		object:enter_to(c)
 	end
 end
-
+-- exit arbiter object from field
 function field_base:exit(object)
 	local c = self:CellAt(object.X, object.Y);
 	if c then
@@ -76,7 +76,7 @@ function field_base:do_update()
 	self:on_tick()
 	for x=0,self.SizeX-1 do
 		for y=0,self.SizeY-1 do
-			self:CellAt(x, y):update(self)
+			self:CellAt(x, y):update()
 		end
 	end
 	local team_id = self:check_completion()
@@ -87,17 +87,17 @@ end
 -- field tick. update team status and event status
 function field_base:on_tick()
 	for team_id, team in iter(self.Teams) do
-		team:on_tick(self)
+		team:on_tick()
 	end
 	for _, ev in iter(self.Events) do
-		event:on_tick(self)
+		event:on_tick()
 	end
 end
 -- iter over all user in field
-function field_base:for_all_user(fn)
+function field_base:for_all_user(fn, ...)
 	for x=0,self.SizeX-1 do
 		for y=0,self.SizeY-1 do
-			local r = self:CellAt(x, y):for_all_user(fn)
+			local r = self:CellAt(x, y):for_all_user(fn, ...)
 			if r then
 				return r
 			end
@@ -110,7 +110,7 @@ function field_base:end_field(winner)
 	self:for_all_user(function (user)
 		local ev = user:reward(self)
 		ev.winner = winner
-		user:play(self:end_event(ev)) -- show winner and reward and status change to client
+		user:play(user:end_event(ev)) -- show winner and reward and status change to client
 	end)
 	if ServerMode then
 		system.queue_destroy(self)
@@ -132,7 +132,7 @@ function field_base:check_completion()
 			p = {}
 			pg[ot.Group] = p
 		end
-		p[ot.Id] = o:progress(self)
+		p[ot.Id] = o:progress()
 	end
 	for team_id, team_state in iter(pglist) do
 		-- scplog('team', team_id)
@@ -153,19 +153,8 @@ function field_base:check_completion()
 	end	
 	-- not finished. send each user to progress
 	self:for_all_user(function (user)
-		user:play(self:progress_event(pglist[user.Team.Id]))
+		user:progress_event(pglist[user.Team.Type.Id])
 	end)
-end
-
--- field event to renderer
-function field_base:init_event(payload)
-	return "start play event"
-end
-function field_base:end_event(payload)
-	return "end event"
-end
-function field_base:progress_event(payload)
-	return "progress event"
 end
 
 return field_base

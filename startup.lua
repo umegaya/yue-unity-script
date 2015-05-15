@@ -10,10 +10,13 @@ _G.class = require 'common.class'
 
 
 local field
+function GetField()
+	return field
+end
+
 function Initialize(f, field_data)
 	field = ObjectWrapper.Wrap(f, "fields/field_base.lua");
 	field:initialize(field_data)
-	field_update = field.update
 end
 
 function Enter(id, peer, user_data)

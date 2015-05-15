@@ -1,7 +1,15 @@
 local objective_base = class.new()
 
-function objective_base:progress(field)
+function objective_base:progress()
 	return 0
 end
 
-return cell_base
+function objective_base:display_data()
+	return {
+		Id = self.Type.Id,
+		Name = self.Type.Name,
+		Progress = self:progress(),
+	}
+end
+
+return objective_base

@@ -1,7 +1,7 @@
 local cell_base = class.new()
 
 -- do periodic stuff for this cell
-function cell_base:update(field)
+function cell_base:update()
 	self:on_tick()
 	for p in iter(self.UserSide) do
 		self:update_partition(p)
@@ -13,7 +13,7 @@ function cell_base:update_partition(p)
 	for team_id, team in iter(p.Teams) do
 		for object in iter(team) do
 			self:on_tick_object(object)
-			object:update(field, self)
+			object:update()
 		end
 	end
 end
@@ -33,11 +33,11 @@ function cell_base:get_vacant_partition(o, for_user)
 	end		
 end
 -- iterate function for all user in this cell
-function cell_base:for_all_user(fn)
+function cell_base:for_all_user(fn, ...)
 	for p in iter(self.UserSide) do
 		for team_id, ulist in iter(p.Users) do
 			for u in iter(ulist) do
-				local r = fn(u)
+				local r = fn(u, ...)
 				if r then 
 					return r 
 				end
@@ -49,6 +49,13 @@ end
 function cell_base:pop(id)
 	local o = ObjectFactory.Create(id)
 	o:enter_to(self)
+end
+-- returns data for desplay cell
+function cell_base:display_data()
+	return { 
+		Id = self.Type.Id,
+		Name = self.Type.Name,
+	}
 end
 -- callback
 function cell_base:on_tick()
