@@ -24,12 +24,27 @@ function team_base:count_alive_object()
 	end
 	return count
 end
+function team_base:is_friendly(team)
+	for id in iter(self.Type.FriendlyTeams) do
+		if team.Type.Id == id then
+			return true
+		end
+	end
+end
+function team_base:is_hostile(team)
+	for id in iter(self.Type.HostileTeams) do
+		if team.Type.Id == id then
+			return true
+		end
+	end
+end
 
 function team_base:display_data()
 	return { 
 		Id = self.Type.Id,
 		Name = self.Type.Name,
 		Total = self:count_object(),
+		UserTotal = self.UserBelongsTo.Count,
 		Alive = self:count_alive_object(),
 		Score = self.Score,
 	}
@@ -37,7 +52,7 @@ end
 function team_base:pop_point(object)
 	return 0, 0
 end
-function team_base:on_tick()
+function team_base:on_tick(dt)
 end
 
 return team_base

@@ -7,7 +7,7 @@ function loss_ratio:progress()
 	if count <= 0 then
 		return 0
 	end
-	return math.min(100, math.ceil((100 * team:count_alive_object()) / count))
+	return math.min(100, math.ceil((100 * (count - team:count_alive_object())) / count))
 end
 
 return loss_ratio

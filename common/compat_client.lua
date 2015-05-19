@@ -45,6 +45,10 @@ end
 -- client : add lua function which is defined in corresponding script
 ObjectWrapper.Initialize(function (obj, src)
 	local scp = src or obj.Type.Script
+	if not scp then
+		scplog('loadscript error:', 'neither function args nor data provides script path')
+		error('script path error')
+	end
 	local f, err = loadfile(ScriptLoader.SearchPath..scp)
 	if not f then
 		scplog('loadscript error:', scp, err)
@@ -76,7 +80,7 @@ function _G.iter(t)
 			end
 		end
 	elseif type(t) ~= 'table' then
-		scplog('type error', type(t))
+		scplog('type error: should be table or IEnumerable .net object', type(t))
 	end
 	return pairs(t)
 end

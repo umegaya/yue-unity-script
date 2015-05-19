@@ -3,8 +3,6 @@ local field_base = class.new()
 -- base initialization 
 function field_base:initialize(data)
 	scplog('initialize: field_data', data)
-	self:InitCells(data.Cells)
-	self:init_objects(data.Arrangements)
 	for id in iter(data.Objectives) do
 		self.Objectives:Add(ObjectiveFactory.Create(id))
 	end
@@ -14,6 +12,8 @@ function field_base:initialize(data)
 	for id in iter(data.Teams) do
 		self.Teams:Add(id, TeamFactory.Create(id))
 	end
+	self:InitCells(data.Cells)
+	self:init_objects(data.Arrangement)
 end
 
 -- enter logged in user. 
@@ -55,8 +55,9 @@ function field_base:pop_at(id, x, y)
 end
 
 -- prepare objects from data
-function field_base:init_objects(arrangements) 
-	-- TODO : put objects according to arrangement script.
+function field_base:init_objects(arrangement) 
+	local ar = ArrangementFactory.Create(arrangement)
+	ar:on_apply_to()
 end
 
 local cnt = 0
@@ -64,19 +65,28 @@ function field_base:update(dt)
 	if self.Finished then
 	 	return
 	end
-	self:do_update()
+	self:do_update(dt)
 end
-function field_base:invoke(cmd)
-	scplog('command', command)
+function field_base:invoke(id, x, y, cmd)
+	scplog('command', id, command)
+	local c = self:CellAt(x, y)
+	if not c then 
+		return
+	end
+	local o = c:FindObject(id)
+	if not o then
+		return 
+	end
+	o:invoke_command(cmd)
 end
 
 -- internal system
 -- main update routine
-function field_base:do_update()
-	self:on_tick()
+function field_base:do_update(dt)
+	self:on_tick(dt)
 	for x=0,self.SizeX-1 do
 		for y=0,self.SizeY-1 do
-			self:CellAt(x, y):update()
+			self:CellAt(x, y):update(dt)
 		end
 	end
 	local team_id = self:check_completion()
@@ -85,12 +95,12 @@ function field_base:do_update()
 	end
 end	
 -- field tick. update team status and event status
-function field_base:on_tick()
+function field_base:on_tick(dt)
 	for team_id, team in iter(self.Teams) do
-		team:on_tick()
+		team:on_tick(dt)
 	end
 	for _, ev in iter(self.Events) do
-		event:on_tick()
+		event:on_tick(dt)
 	end
 end
 -- iter over all user in field
@@ -104,13 +114,23 @@ function field_base:for_all_user(fn, ...)
 		end
 	end	
 end
+function field_base:for_all_object(fn, ...)
+	for x=0,self.SizeX-1 do
+		for y=0,self.SizeY-1 do
+			local r = self:CellAt(x, y):for_all_object(fn, ...)
+			if r then
+				return r
+			end
+		end
+	end	
+end
 -- calculate rewards, status change after this battle, and notify it to client with winner
 -- when field finished.
 function field_base:end_field(winner)
 	self:for_all_user(function (user)
 		local ev = user:reward(self)
 		ev.winner = winner
-		user:play(user:end_event(ev)) -- show winner and reward and status change to client
+		user:end_event(ev) -- show winner and reward and status change to client
 	end)
 	if ServerMode then
 		system.queue_destroy(self)
@@ -155,6 +175,11 @@ function field_base:check_completion()
 	self:for_all_user(function (user)
 		user:progress_event(pglist[user.Team.Type.Id])
 	end)
+end
+
+function field_base:random_cell()
+	local rx, ry = math.random(0, self.SizeX-1), math.random(0, self.SizeY-1)
+	return self:CellAt(rx, ry)
 end
 
 return field_base

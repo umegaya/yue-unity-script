@@ -27,7 +27,7 @@ function Update(dt)
 	field:update(dt)
 end
 
-function SendCommand(command)
-	field:invoke(command)
+function SendCommand(id, x, y, command)
+	field:invoke(id, x, y, command)
 end
 

@@ -14,11 +14,14 @@ function table.merge(self, t, deep)
 end
 
 -- create new class instance
-function _M.new(parent)
+function _M.new(parent, ...)
 	local t = {}
 	t.__index = t
 	if parent then
 		table.merge(t, parent)
+	end
+	if select('#', ...) > 0 then
+		_M.mix(t, ...)
 	end
 	return t
 end
@@ -33,7 +36,7 @@ function _M.mix(...)
 	local r = select(1, ...)
 	for i=2,n do
 		local t = select(i, ...)
-		r:merge(t)
+		table.merge(r, t)
 	end
 	return r
 end
