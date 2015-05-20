@@ -33,9 +33,9 @@ end
 
 function action_result:apply_combo(num_combo, ar)
 	if self.DAMAGE == self.Type then
-		self.Args[0] = math.ceil(1.1 * self:int_arg(2));
+		self.Args[2] = math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2)));
 	elseif self.HEAL == self.Type then
-		self.Args[0] = math.ceil(1.1 * self:int_arg(2));
+		self.Args[2] = math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2)));
 	elseif self.EFFECT == self.Type then
 		self.Skill.Duration = math.ceil(self.Skill.Duration * 1.1);
 	elseif self:is_invalid() then
@@ -113,7 +113,7 @@ function action_result:display_data()
 	if self.ComboData and self.ComboData.Count > 0 then
 		local ComboData = {}
 		for ar in iter(self.ComboData) do
-			table.insert(ComboData, ar:display_data())
+			table.insert(ComboData, ar:display_data(true))
 		end
 		r.ComboData = ComboData
 	end

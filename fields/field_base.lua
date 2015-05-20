@@ -131,7 +131,7 @@ end
 function field_base:end_field(winner)
 	self:for_all_user(function (user)
 		local ev = user:reward(self)
-		ev.winner = winner
+		ev.Winner = winner
 		user:end_event(ev) -- show winner and reward and status change to client
 	end)
 	if ServerMode then

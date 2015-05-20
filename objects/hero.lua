@@ -22,22 +22,13 @@ function hero:initial_pop()
 end
 
 function hero:display_data()
-	return character.display_data(self)
+	local d = character.display_data(self)
+	d.OwnerId = self.OwnerId
+	return d
 end
 
 function hero:get_owner()
 	return GetField():FindObject(self.OwnerId)
-end
-
--- event to hero will be transferred to its owner (user)
-function hero:action_event(target, action_result)
-	return self:get_owner():action_event(target, action_result)
-end
-function hero:dead_event(target)
-	return self:get_owner():dead_event(target)
-end
-function hero:status_change_event(target)
-	return self:get_owner():status_change_event(target)
 end
 
 return hero

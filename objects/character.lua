@@ -24,13 +24,6 @@ function character:do_action()
     -- default do nothing
 end
 
-function character:action_event(target, action_result)
-end
-function character:dead_event(target)
-end
-function character:status_change_event(target)
-end
-
 function character:new_action_result(result_id, name, ...)
     local ar = ActionResultFactory.Create(result_id, name, ...)
     return ObjectWrapper.Wrap(ar, "common/action_result.lua")
@@ -148,20 +141,23 @@ function character:invoke_combo()
         self.ComboChain:Clear()
         return
     end
+    local i, max = 1, self.ComboChain.Count
     for ar in iter(self.ComboChain) do
         local skill = ar:skill_arg(1)
+        local type = skill.Type
         if not name then
-            root_ar = ar
-            name = skill.Prefix
-        elseif i < #chain then
-            name = name .. skill.PreFix
+            root_ar = ar:Clone()
+            name = type.Prefix
+        elseif i < max then
+            name = name .. type.Prefix
             root_ar:apply_combo(i, ar)
         else
-            name = name .. skill.PostFix
+            name = name .. type.Postfix
             root_ar:apply_combo(i, ar)
         end
+        i = i + 1
     end
-    root_ar:add_combo_data(chain)
+    root_ar:add_combo_data(self.ComboChain)
     root_ar.Name = name
     root_ar:invoke(self)
     self.ComboChain:Clear()
@@ -176,6 +172,7 @@ function character:status_display_data()
 		TargetId = self.Id, -- using this for making some action
 		MaxHp = self.MaxHp,
 		Hp = self.Hp,
+		MaxWp = self.MaxWp,
         Wp = self.Wp,
         Effects = effects,
   	}
@@ -194,7 +191,6 @@ function character:display_data()
 		Id = self.Type.Id,
 		Display = self.Type.DisplayPosition, -- user or enemy
 		Name = self.Type.Name,
-		OwnerId = self.OwnerId,
 		TeamId = self.Team.Id,
 		MaxHp = self.MaxHp,
 		Hp = self.Hp,

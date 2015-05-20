@@ -125,6 +125,25 @@ function object_base:for_all_visible_user(fn, ...)
 	end
 end
 
+-- event notifier
+function object_base:action_event(target, action_result)
+    local cell = self:current_cell()
+    -- even if self is on enemy side, only users in target's partition can see this action
+    cell:for_all_user_in_partition(target.Partition, function (user, t, ar)
+	   return user:action_event(t, ar) 
+    end, target, action_result)
+end
+function object_base:dead_event(target)
+    self:for_all_visible_user(function (user, t)
+	   return user:dead_event(t) 
+    end, target)
+end
+function object_base:status_change_event(target)
+    self:for_all_visible_user(function (user, t)
+	   return user:status_change_event(t) 
+    end, target)
+end
+
 -- returns data for display on client side
 function object_base:display_data()
 	assert(false, "should be overridden by child class")
