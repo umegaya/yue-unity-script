@@ -80,7 +80,7 @@ function _G.iter(t)
 			end
 		end
 	elseif type(t) ~= 'table' then
-		scplog('type error: should be table or IEnumerable .net object', type(t))
+		scplog('type error: should be table or IEnumerable .net object but', type(t), t)
 	end
 	return pairs(t)
 end

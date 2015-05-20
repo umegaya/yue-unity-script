@@ -20,6 +20,9 @@ function character:update(dt)
     self:resolve_queue()
     object_base.update(self, dt)
 end
+function character:do_action()
+    -- default do nothing
+end
 
 function character:action_event(target, action_result)
 end
@@ -45,18 +48,16 @@ end
 
 -- choose skill target. currently random. npc will override this to more clever selection
 function character:get_skill_target(skill)
-	local targets = {}
-	self.Partition:for_all_object_in_partition(function (obj, u, list)
-		if self:effective(u, obj) then
+	return self:choose_random_visible_object(function (obj, list, u, skill)
+        --scplog('get_skil_target', obj.Type.Id, u.Type.Id, skill)
+		if skill:effective(u, obj) then
 			table.insert(list, obj)
 		end
-	end, self, skill, targets)
-	local idx = math.random(1, #targets)
-	return targets[idx]
+	end, self, skill)
 end
 
 function character:get_attack_damanage(target)
-    return Math.Max(self.Attack - target.Defence, 1)
+    return math.max(self.Attack - target.Defense, 1)
 end
 
 function character:get_skill_by_id(skill_id)
@@ -77,17 +78,33 @@ function character:apply_effect_to_result(ar)
     return ar
 end
 
-function character:add_effect(skill)
+function character:add_effect(skill, notice)
     local cloned = skill:Clone()
     cloned.Duration = cloned.Type.Duration
     self.Effects:Add(cloned)
-    self:status_change_event(self)
+    if notice then
+        self:status_change_event(self)
+    end
 end
 
-function character:add_damage(d)
-    self.Hp = self.Hp + d
-    self.Hp = Math.Max(0, Math.Min(self.MaxHp, self.Hp))
-    self:status_change_event(self)
+-- hp/wp
+function character:add_damage(d, notice)
+    self.Hp = self.Hp - d
+    self.Hp = math.max(0, math.min(self.MaxHp, self.Hp))
+    if notice then
+        self:status_change_event(self)
+    end
+end
+function character:add_heal(h, notice)
+    self:add_damege(-h, notice)
+end
+function character:add_wp(wp)
+    self.Wp = self.Wp + wp
+    self.Wp = math.max(0, math.min(self.MaxWp, self.Wp))
+    self:status_change_event(self)    
+end
+function character:consume_wp(wp)
+    self:add_wp(-wp)
 end
 
 function character:resolve_queue()
@@ -101,7 +118,7 @@ function character:resolve_queue()
     for ar in iter(self.ActionQueue) do
         local processed
         if self.ComboChain.Count > 0 then
-            local last = self:LastComboResult()
+            local last = self:LastComboAction()
             if ar:can_combo_with(last) then
                 self.ComboChain:Add(ar)
                 self.LastUpdateQueue = now
@@ -127,7 +144,8 @@ function character:invoke_combo()
     local root_ar
     local participants = {}
     if self.ComboChain.Count <= 1 then
-        self:LastComboResult():invoke(self)
+        self:LastComboAction():invoke(self)
+        self.ComboChain:Clear()
         return
     end
     for ar in iter(self.ComboChain) do
@@ -150,10 +168,7 @@ function character:invoke_combo()
 end
 
 function character:status_display_data()
-  	local skills, effects = {}, {}
-  	for skill in iter(self.Skills) do
-    	table.insert(skills, skill:display_data())
-  	end
+  	local effects = {}
   	for effect in iter(self.Effects) do
     	table.insert(effects, effect:display_data())
   	end
@@ -161,7 +176,7 @@ function character:status_display_data()
 		TargetId = self.Id, -- using this for making some action
 		MaxHp = self.MaxHp,
 		Hp = self.Hp,
-		Skills = skills,
+        Wp = self.Wp,
         Effects = effects,
   	}
 end

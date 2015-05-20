@@ -12,16 +12,17 @@ table.merge(action_result, {
 
 function action_result:invoke(target)
 	local dead = target.IsDead
+	--scplog('invoke', dead, self.Type)
 	if self.DAMAGE == self.Type then
 		target:add_damage(self:int_arg(2))
 	elseif self.HEAL == self.Type then
-		target:add_damage(-self:int_arg(2))
+		target:add_heal(self:int_arg(2))
 	elseif self.EFFECT == self.Type then
 		target:add_effect(self:skill_arg(1))
 	elseif self.TERRAIN_DAMAGE == self.Type then
 		target:add_damage(self:int_arg(0))
 	elseif self.TERRAIN_HEAL == self.Type then
-		target:add_damage(-self:int_arg(0))
+		target:add_heal(self:int_arg(0))
 	elseif self:is_invalid() then
 	end
 	target:action_event(target, self)
@@ -30,13 +31,13 @@ function action_result:invoke(target)
 	end
 end
 
-function action_result:apply_combo(combo_index, ar)
+function action_result:apply_combo(num_combo, ar)
 	if self.DAMAGE == self.Type then
-		self.Args[0] = (int)Math.Ceiling(1.1 * self:int_arg(2));
+		self.Args[0] = math.ceil(1.1 * self:int_arg(2));
 	elseif self.HEAL == self.Type then
-		self.Args[0] = (int)Math.Ceiling(1.1 * self:int_arg(2));
+		self.Args[0] = math.ceil(1.1 * self:int_arg(2));
 	elseif self.EFFECT == self.Type then
-		self.Skill.Duration = (int)Math.Ceiling(self.Skill.Duration * 1.1);
+		self.Skill.Duration = math.ceil(self.Skill.Duration * 1.1);
 	elseif self:is_invalid() then
 	else
 	end
@@ -53,16 +54,15 @@ function action_result:can_start_combo()
 	local t = self.Type
 	if t == self.DAMAGE or t == self.HEAL or t == self.EFFECT then
 		local skill = self:skill_arg(1)
-		scplog('skillg', skill.Group)
-		return skill.Group ~= nil
+		return skill.Type.Group ~= nil
 	end
 end
 function action_result:can_combo_with(result)
 	if self:can_start_combo() and result:can_start_combo() then
 		local skill = self:skill_arg(1)
 		local result_skill = result:skill_arg(1)
-		for group in iter(skill.AcceptGroups) do
-			if group == result_skill.Group then
+		for group in iter(skill.Type.AcceptGroups) do
+			if group == result_skill.Type.Group then
 				return true
 			end
 		end	
@@ -80,6 +80,9 @@ function action_result:str_arg(idx)
 end
 function action_result:skill_arg(idx)
 	return self:SkillArg(idx)
+end
+function action_result:object_arg(idx)
+	return self:ObjectArg(idx)
 end
 
 function action_result:display_data()

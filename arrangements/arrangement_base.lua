@@ -1,6 +1,7 @@
 local arrangement_base = class.new()
 
 function arrangement_base:fill_random(team_id,candidates)
+	scplog('fill_random', candidates.Count)
 	for id in iter(candidates) do
 		local g = GroupFactory.Create(id)
 		local cell = GetField():random_cell()

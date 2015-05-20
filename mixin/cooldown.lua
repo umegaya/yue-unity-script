@@ -4,9 +4,6 @@ function cooldown:init_cooldown()
 	self.Cooldown = self.Type.WaitSec
 end
 function cooldown:cooldown(dt)
-	if not dt then
-		scplog('dt null')
-	end
 	if self.Cooldown <= 0 then
 		return false
 	end

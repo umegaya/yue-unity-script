@@ -36,6 +36,7 @@ function field_base:enter(object, x, y)
 		--scplog(object, 'enter_to', c)
 		object:enter_to(c)
 	end
+	self.ObjectMap:Add(object.Id, object)
 end
 -- exit arbiter object from field
 function field_base:exit(object)
@@ -43,6 +44,7 @@ function field_base:exit(object)
 	if c then
 		object:exit_from(c)
 	end
+	self.ObjectMap:Remove(object.Id)
 end
 
 

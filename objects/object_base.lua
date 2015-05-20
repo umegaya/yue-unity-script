@@ -20,7 +20,8 @@ function object_base:destroy()
 end
 function object_base:update(dt)
 	if self:cooldown(dt) then
-		self:do_action()
+		local wait = self:do_action()
+        self:set_cooldown(wait)
 	end
 	self:on_tick(dt)
 end
@@ -56,20 +57,72 @@ end
 
 -- enter/exit field
 function object_base:enter_to(cell, p)
-	p = p or cell:get_vacant_partition(self)
-	if p then
-		p:Enter(self)
+	if self.Type.DisplaySide == "user" then
+		p = p or cell:get_vacant_partition(self)
+		if p then
+			p:Enter(self)
+		end
+		cell:for_all_user_in_partition(p, function (user, obj)
+			user:enter_event(obj)
+		end, self)
+	else
+		cell.EnemySide:Enter(self)
+		cell:for_all_user(function (user, obj)
+			user:enter_event(obj)
+		end, self)
 	end
-	cell:for_all_user_in_partition(p, function (user, obj)
-		user:enter_event(obj)
-	end, self)
 end
 function object_base:exit_from(cell)
-	local p = self.Partition
-	cell:for_all_user_in_partition(p, function (user, obj)
-		user:exit_event(obj)
-	end, self)	
-	cell:Exit(self)
+	if self.Type.DisplaySide == "user" then
+		local p = self.Partition
+		cell:for_all_user_in_partition(p, function (user, obj)
+			user:exit_event(obj)
+		end, self)	
+		p:Exit(self)
+	else
+		cell:for_all_user(function (user, obj)
+			user:exit_event(obj)
+		end, self)
+		cell.EnemySide:Exit(self)
+	end
+end
+
+function object_base:for_all_visible_object(fn, ...)
+	local cell = self:current_cell()
+	if self.Type.DisplaySide == "user" then
+		-- my partition and enemyside
+		return cell:iterate_team_list(self.Partition.Teams, fn, ...) or 
+			cell:iterate_team_list(cell.EnemySide.Teams, fn, ...)
+	else
+		-- enemy side can see all object
+		return cell:for_all_object(fn, ...)
+	end
+end
+function object_base:choose_random_visible_object(filter, ...)
+	local cell = self:current_cell()
+	local cand = {}
+	if self.Type.DisplaySide == "user" then
+		-- my partition and enemyside
+		cell:iterate_team_list(self.Partition.Teams, filter, cand, ...)
+		cell:iterate_team_list(cell.EnemySide.Teams, filter, cand, ...)
+	else
+		-- enemy side can see all object, so first choose random user side partition
+		-- to reduce iteration count
+		local p = cell:random_partition()
+		cell:iterate_team_list(p.Teams, filter, cand, ...)
+		cell:iterate_team_list(cell.EnemySide.Teams, filter, cand, ...)
+	end
+	return #cand > 0 and cand[math.random(1, #cand)]
+end
+function object_base:for_all_visible_user(fn, ...)
+	local cell = self:current_cell()
+	if self.Type.DisplaySide == "user" then
+		-- my partition
+		return cell:iterate_team_list(self.Partition.Users, fn, ...)
+	else
+		-- enemy side can see all object
+		return cell:for_all_user(fn, ...)
+	end
 end
 
 -- returns data for display on client side

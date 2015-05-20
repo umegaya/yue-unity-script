@@ -24,7 +24,7 @@ function cell_base:get_vacant_partition(o, for_user)
 			if not (for_user and p.IsFull) then
 				return p
 			end
-		end
+		end	
 		local p = Partition()
 		self.UserSide:Add(p)
 		return p
@@ -35,14 +35,22 @@ end
 -- iterate function for all user in this cell
 function cell_base:iterate_team_list(list, fn, ...)
 	for team_id, ulist in iter(list) do
+		--scplog('iterate_team_list', team_id, ulist.Count)
 		for u in iter(ulist) do
 			local r = fn(u, ...)
 			if r then 
-				return r 
+				return r
 			end
 		end
 	end
 end
+-- choose random partition
+function cell_base:random_partition()
+	local cnt = self.UserSide.Count
+	local idx = math.random(0, cnt - 1)
+	return self.UserSide[idx]
+end
+-- iterate object/user in it
 function cell_base:for_all_user(fn, ...)
 	for p in iter(self.UserSide) do
 		self:iterate_team_list(p.Users, fn, ...)

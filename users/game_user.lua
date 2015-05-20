@@ -5,7 +5,7 @@ function game_user:initialize(id, peer, user_data)
 	for data in iter(user_data.Heroes) do
 		local hero = ObjectFactory.Create(data.Id)
 		data.TeamId = user_data.TeamId
-		data.OwnerId = user.Id
+		data.OwnerId = id -- id will be owner 
 		hero:initialize(data, field)
 		self.Heroes:Add(hero)
 	end

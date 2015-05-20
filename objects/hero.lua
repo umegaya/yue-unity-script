@@ -26,7 +26,7 @@ function hero:display_data()
 end
 
 function hero:get_owner()
-	return self:current_cell():FindObject(self.OwnerId)
+	return GetField():FindObject(self.OwnerId)
 end
 
 -- event to hero will be transferred to its owner (user)
