@@ -1,4 +1,5 @@
 local user = require 'users.user'
+local util = require 'common.util'
 local game_user = class.new(user)
 
 function game_user:initialize(id, peer, user_data)
@@ -10,6 +11,8 @@ function game_user:initialize(id, peer, user_data)
 		self.Heroes:Add(hero)
 	end
 	self.Objective = GetField().Objectives[user_data.ObjectiveId]
+	self.LastCmdTime = 0
+	self.WaitSec = 0
 	user.initialize(self, id, peer, user_data)
 end
 
@@ -43,10 +46,20 @@ function game_user:battle(orders)
 end
 
 function game_user:invoke_command(cmd)
-	if cmd.Type == "battle" then
-		self:battle(cmd.Orders)
-	elseif cmd.Type == "move" then
-		self:move(cmd.X, cmd.Y)
+	local now = util.now()
+	local wait_sec 
+	if (now - self.LastCmdTime) > self.WaitSec then
+		self.LastCmdTime = now	
+		if cmd.Type == "battle" then
+			wait_sec = self:battle(cmd.Orders)
+		elseif cmd.Type == "move" then
+			wait_sec = self:move(cmd.X, cmd.Y)
+		end
+		self.WaitSec = wait_sec or self.Type.WaitSec
+		return self.WaitSec
+	else
+		self:error_event({'cooldown required', now - self.LastCmdTime, self.WaitSec})
+		return now - self.LastCmdTime
 	end
 end
 
@@ -108,6 +121,9 @@ function game_user:build_action_payload(target, action_result)
 end
 function game_user:play_event(type, payload)
 	if not _G.ServerMode then
+		if _G.type(payload) ~= 'table' then
+			payload = {payload}
+		end
 		return self.Peer:Play(type, payload)
 	else
 		-- TODO : server mode notification
@@ -136,6 +152,9 @@ function game_user:end_event(payload)
 end
 function game_user:progress_event(payload)
 	return self:play_event("progress", payload)
+end
+function game_user:error_event(obj)
+	return self:play_event("error", obj)
 end
 
 return game_user

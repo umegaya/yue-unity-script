@@ -1,5 +1,5 @@
 local object_base = require 'objects.object_base'
-local user = class.new(object_base, require 'mixin.cooldown')
+local user = class.new(object_base)
 
 function user:initialize(id, peer, user_data)
 	self.Peer = peer

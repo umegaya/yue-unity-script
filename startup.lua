@@ -28,6 +28,6 @@ function Update(dt)
 end
 
 function SendCommand(id, command)
-	field:invoke(id, command)
+	return field:invoke(id, command)
 end
 

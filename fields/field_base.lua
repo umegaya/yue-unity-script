@@ -74,7 +74,7 @@ function field_base:invoke(id, cmd)
 	if not o then
 		return 
 	end
-	o:invoke_command(cmd)
+	return o:invoke_command(cmd)
 end
 
 -- internal system
