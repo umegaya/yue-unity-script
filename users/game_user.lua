@@ -13,27 +13,38 @@ function game_user:initialize(id, peer, user_data)
 	user.initialize(self, id, peer, user_data)
 end
 
-function game_user:use_skill(skill_id)
-	if self.Cooldown > 0 then
-		scplog("cooldown required", self.Cooldown)
-		return
+function game_user:battle(orders)
+	for order_target_id, order in iter(orders) do
+		local o = GetField():FindObject(order_target_id)
+		if not o then
+			scplog("order target not exist", order_target_id)
+			break
+		end
+		if o.IsDead then
+			scplog("order target dead", o.Id)
+			break
+		end
+		if o.OwnerId ~= self.Id then
+			scplog("different owner", o.OwnerId, self.Id)
+			break
+		end
+		local skill = o:get_skill_by_id(order.SkillId)
+		if not skill then
+			scplog("skill not equipped", order.SkillId)
+			break
+		end
+		if skill.Type.Wp > o.Wp then
+			scplog("no wp", skill.Type.Wp, o.Wp)
+			break
+		end
+		local target = order.TargetId and GetField():FindObject(order.TargetId)
+		skill:use(o, target)
 	end
-	local skill = self:get_skill_by_id(skill_id)
-	if not skill then
-		scplog("skill not equipped", cmd.skill_id)
-		return
-	end
-	if skill.Wp < self.Wp then
-		scplog("no wp", skill.Type.Wp, self.Wp)
-		return			
-	end
-	local target = cmd.TargetId and self:current_cell():FindObject(cmd.TargetId)
-	skill:use(self, target)
 end
 
 function game_user:invoke_command(cmd)
-	if cmd.Type == "skill" then
-		self:use_skill(cmd.SkillId)
+	if cmd.Type == "battle" then
+		self:battle(cmd.Orders)
 	elseif cmd.Type == "move" then
 		self:move(cmd.X, cmd.Y)
 	end
@@ -91,7 +102,7 @@ function game_user:build_scene_payload()
 end
 function game_user:build_action_payload(target, action_result)
 	return {
-		TargetId = target.Id,
+		TargetId = target and target.Id,
 		Action = action_result:display_data(),
 	}
 end
@@ -102,8 +113,8 @@ function game_user:play_event(type, payload)
 		-- TODO : server mode notification
 	end
 end
-function game_user:action_event(target, action_result)
-	return self:play_event("action", self:build_action_payload(target, action_result))
+function game_user:action_event(invoker, action_result)
+	return self:play_event("action", self:build_action_payload(invoker, action_result))
 end
 function game_user:dead_event(target)
 	return self:play_event("dead", { TargetId = target.Id })

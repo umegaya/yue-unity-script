@@ -128,10 +128,23 @@ end
 -- event notifier
 function object_base:action_event(target, action_result)
     local cell = self:current_cell()
-    -- even if self is on enemy side, only users in target's partition can see this action
-    cell:for_all_user_in_partition(target.Partition, function (user, t, ar)
-	   return user:action_event(t, ar) 
-    end, target, action_result)
+	local p
+	if target.Type.DisplaySide == "user" then 
+		p = target.Partition
+	elseif action_result:has_invoker() then
+		p = action_result:object_arg(0).Partition
+	end
+	if p then
+	    cell:for_all_user_in_partition(p, function (user, t, ar)
+		   return user:action_event(t, ar) 
+	    end, target, action_result)
+	else
+		-- non-invoker result does something to npc. it is visible for all user in this cell 
+		-- TODO : but it may too heavy for crowded cell, then how we handle that?
+		cell:for_all_user(function (user, t, ar)
+		   return user:action_event(t, ar) 
+	    end, target, action_result)
+	end
 end
 function object_base:dead_event(target)
     self:for_all_visible_user(function (user, t)

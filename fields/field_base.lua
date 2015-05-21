@@ -69,13 +69,8 @@ function field_base:update(dt)
 	end
 	self:do_update(dt)
 end
-function field_base:invoke(id, x, y, cmd)
-	scplog('command', id, command)
-	local c = self:CellAt(x, y)
-	if not c then 
-		return
-	end
-	local o = c:FindObject(id)
+function field_base:invoke(id, cmd)
+	local o = self:FindObject(id)
 	if not o then
 		return 
 	end
@@ -102,7 +97,7 @@ function field_base:on_tick(dt)
 		team:on_tick(dt)
 	end
 	for _, ev in iter(self.Events) do
-		event:on_tick(dt)
+		ev:on_tick(dt)
 	end
 end
 -- iter over all user in field

@@ -50,15 +50,18 @@ function action_result:add_combo_data(combo)
 	end
 end
 
-function action_result:can_start_combo()
+function action_result:has_invoker()
 	local t = self.Type
-	if t == self.DAMAGE or t == self.HEAL or t == self.EFFECT then
+	return t == self.DAMAGE or t == self.HEAL or t == self.EFFECT
+end
+function action_result:can_start_combo()
+	if self:has_invoker() then
 		local skill = self:skill_arg(1)
 		return skill.Type.Group ~= nil
 	end
 end
 function action_result:can_combo_with(result)
-	if self:can_start_combo() and result:can_start_combo() then
+	if self:can_start_combo() and result:has_invoker() then
 		local skill = self:skill_arg(1)
 		local result_skill = result:skill_arg(1)
 		for group in iter(skill.Type.AcceptGroups) do

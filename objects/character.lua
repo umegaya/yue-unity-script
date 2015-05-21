@@ -34,7 +34,7 @@ function character:generate_skill_result(result_id, doer, skill, ...)
     self.ActionQueue:Add(ar)
 end
 function character:generate_action_result(result_id, ...)
-    local ar = self:new_action_result(result_id, doer, skill, ...)
+    local ar = self:new_action_result(result_id, ...)
     ar = self:apply_effect_to_result(ar) -- apply buff to this battle effect. decrease or immute damage, etc ...
     self.ActionQueue:Add(ar)
 end
@@ -55,7 +55,7 @@ end
 
 function character:get_skill_by_id(skill_id)
     for skill in iter(self.Skills) do
-        if skill.Id == skill_id then
+        if skill.Type.Id == skill_id then
             return skill
         end
     end

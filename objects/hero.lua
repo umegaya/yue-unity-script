@@ -9,6 +9,8 @@ function hero:initialize(data)
 	-- Growth factor should added to HeroObjectType
   	self.MaxHp = self.Type.MaxHp
   	self.Hp = self.MaxHp
+    self.MaxWp = self.Type.MaxWp
+    self.Wp = self.MaxWp
     self.Attack = self.Type.Attack
     self.Defense = self.Type.Defense
 	-- TODO : apply equipped skill, not use data from characertypebase.
@@ -16,9 +18,10 @@ function hero:initialize(data)
   	for skill_id in iter(self.Type.Skills) do
 		self.Skills:Add(SkillFactory.Create(skill_id))
   	end
+	-- hero enter into field with owner, so does not enter by itself, only added to objectmap
+	GetField().ObjectMap:Add(self.Id, self)
 end
 function hero:initial_pop()
-	-- hero enter into field with owner, so does not enter by itself.
 end
 
 function hero:display_data()
