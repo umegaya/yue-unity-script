@@ -7,8 +7,9 @@ end
 
 function npc:do_action(target)
 	-- TODO : execute action which is decided by AI
-	local idx = math.random(0, self.Skills.Count - 1)
-	local skill = self.Skills[idx]
+	--local idx = math.random(0, self.Skills.Count - 1)
+	--local skill = self.Skills[idx]
+	local skill = self:GetRandomSkill()
 	skill:use(self, target)
 end
 
