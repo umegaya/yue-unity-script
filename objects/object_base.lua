@@ -1,4 +1,4 @@
-local object_base = class.new()
+local object_base = behavior.new()
 
 
 -- delete/init/update
@@ -6,17 +6,14 @@ function object_base:initialize(data)
 	self:init_cooldown()
 	self:join_team(data.TeamId)
 	self:on_initialize(data)
-	self:initial_pop()
-end
-function object_base:initial_pop()
-	local x, y = self.Team:pop_point(self)
-	GetField():enter(self, x, y)
+	GetField().ObjectMap:Add(self.Id, self)
 end
 function object_base:on_initialize(data)
 end
 function object_base:destroy()
 	self:leave_team()
-	GetField():exit(self)
+	self:current_cell():exit(self)
+	GetField().ObjectMap:Remove(self.Id)
 end
 function object_base:update(dt)
 	if self:cooldown(dt) then
@@ -132,7 +129,7 @@ function object_base:action_event(target, action_result)
 	if target.Type.DisplaySide == "user" then 
 		p = target.Partition
 	elseif action_result:has_invoker() then
-		p = action_result:object_arg(0).Partition
+		p = action_result:object_arg(1).Partition
 	end
 	if p then
 	    cell:for_all_user_in_partition(p, function (user, t, ar)
@@ -159,7 +156,7 @@ end
 
 -- returns data for display on client side
 function object_base:display_data()
-	assert(false, "should be overridden by child class")
+	assert(false, "should be overridden by child behavior")
 end
 
 function object_base:move(x, y)

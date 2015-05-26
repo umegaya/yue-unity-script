@@ -1,8 +1,8 @@
 local objective_base = require 'objectives.objective_base'
-local loss_ratio = class.new(objective_base)
+local loss_ratio = behavior.new(objective_base)
 
 function loss_ratio:progress()
-	local team = GetField():GetTeam(self.Type.TeamId)
+	local team = GetField().Teams:Get(self.Type.TeamId)
 	local count = team:count_object()
 	if count <= 0 then
 		return 0

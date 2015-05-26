@@ -1,4 +1,4 @@
-local event_base = class.new()
+local event_base = behavior.new()
 
 function event_base:on_tick(dt)
 end

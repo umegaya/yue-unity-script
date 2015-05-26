@@ -1,4 +1,4 @@
-local team_base = class.new()
+local team_base = behavior.new()
 
 function team_base:join(object)
 	self.BelongsTo[object.Id] = object
@@ -13,7 +13,7 @@ function team_base:leave_user(u)
 	self.UserBelongsTo:Remove(u.Id)
 end 
 function team_base:count_object()
-	return self.BelongsTo.Count
+	return self.BelongsTo:Size()
 end
 function team_base:count_alive_object()
 	local count = 0
@@ -44,7 +44,7 @@ function team_base:display_data()
 		Id = self.Type.Id,
 		Name = self.Type.Name,
 		Total = self:count_object(),
-		UserTotal = self.UserBelongsTo.Count,
+		UserTotal = self.UserBelongsTo:Size(),
 		Alive = self:count_alive_object(),
 		Score = self.Score,
 	}

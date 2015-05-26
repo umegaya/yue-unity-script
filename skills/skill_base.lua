@@ -1,4 +1,4 @@
-local skill_base = class.new()
+local skill_base = behavior.new()
 
 
 function skill_base:display_data()

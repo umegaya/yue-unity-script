@@ -1,4 +1,4 @@
-local objective_base = class.new()
+local objective_base = behavior.new()
 
 function objective_base:progress()
 	return 0

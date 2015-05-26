@@ -1,68 +1,88 @@
-local field_base = class.new()
+local field_base = behavior.new()
 
 -- base initialization 
 function field_base:initialize(data)
 	scplog('initialize: field_data', data)
 	for id in iter(data.Objectives) do
-		self.Objectives:Add(ObjectiveFactory.Create(id))
+		self.Objectives:Add(id, ObjectivesFactory:Create(id))
 	end
 	for id in iter(data.Events) do
-		self.Events:Add(EventFactory.Create(id))
+		self.Events:Add(EventsFactory:Create(id))
 	end
 	for id in iter(data.Teams) do
-		self.Teams:Add(id, TeamFactory.Create(id))
+		self.Teams:Add(id, TeamsFactory:Create(id))
 	end
-	self:InitCells(data.Cells)
+	self:init_cells(data.Cells)
 	self:init_objects(data.Arrangement)
+end
+
+-- initialize field cells. unlike normal lua code, cells index is 0 origin. 
+function field_base:init_cells(ids)
+	self.SizeX = #ids
+	self.SizeY = #(ids[1])
+	self.Cells = class.new_list(self.SizeY)
+	for i=1,self.SizeY do -- y
+		local rows = class.new_list(self.SizeX)
+		for j=1,self.SizeX do -- x
+			rows[j] = CellsFactory:Create(ids[j][i])
+			rows[j]:initialize()
+		end
+		self.Cells[i] = rows
+	end
+end
+		
+-- find object from id
+function field_base:FindObject(id)
+	return self.ObjectMap:Get(id)
+end
+
+function field_base:new_id()
+	self.IdSeed = self.IdSeed + 1
+	if self.IdSeed > 2000000000 then
+		self.IdSeed = 1
+	end
+	return self.IdSeed
+end
+
+-- get cell. x and y is 0 origin
+function field_base:CellAt(x, y)
+	if x < self.SizeX and y < self.SizeY and x >= 0 and y >= 0 then
+		return self.Cells[x+1][y+1]
+	end
 end
 
 -- enter logged in user. 
 function field_base:login(id, peer, user_data)
 	scplog('enter: user_id', id)
-	local user = ObjectFactory.Create("user")
-	user:initialize(id, peer, user_data)
+	local user = ObjectsFactory:Create("user")
+	user.Id = id
+	user.Peer = peer
+	user:initialize(user_data)
+	local cell = self:CellAt(user.Team:pop_point(user))
+	user:enter_to(cell)
 	user:init_event(self)
 end
 -- exit user when field is finished
 function field_base:logout(user)
 	scplog('exit: user_id', user.Id)
-	self:exit(user)
+	user:destroy()
 	user:close()
 end
--- enter arbiter object into x, y of field
-function field_base:enter(object, x, y)
-	local c = self:CellAt(x, y)
-	if c then
-		--scplog(object, 'enter_to', c)
-		object:enter_to(c)
-	end
-	self.ObjectMap:Add(object.Id, object)
-end
--- exit arbiter object from field
-function field_base:exit(object)
-	local c = self:CellAt(object.X, object.Y);
-	if c then
-		object:exit_from(c)
-	end
-	self.ObjectMap:Remove(object.Id)
-end
-
 
 -- pop specified object at point x, y
-function field_base:pop_at(id, x, y)
+function field_base:pop_at(id, data, x, y)
 	local c = self:CellAt(x, y);
 	if c then
-		return c:pop(id);
+		return c:pop(id, data);
 	end
 end
 
 -- prepare objects from data
 function field_base:init_objects(arrangement) 
-	local ar = ArrangementFactory.Create(arrangement)
+	local ar = ArrangementsFactory:Create(arrangement)
 	ar:on_apply_to()
 end
 
-local cnt = 0
 function field_base:update(dt)
 	if self.Finished then
 	 	return
@@ -72,6 +92,7 @@ end
 function field_base:invoke(id, cmd)
 	local o = self:FindObject(id)
 	if not o then
+		scplog('object not found', id)
 		return 
 	end
 	return o:invoke_command(cmd)
@@ -96,7 +117,7 @@ function field_base:on_tick(dt)
 	for team_id, team in iter(self.Teams) do
 		team:on_tick(dt)
 	end
-	for _, ev in iter(self.Events) do
+	for ev in iter(self.Events) do
 		ev:on_tick(dt)
 	end
 end
@@ -137,7 +158,7 @@ end
 -- check this field finished or not by checking objective progress
 function field_base:check_completion()
 	local pglist = {}
-	for o in iter(self.Objectives) do
+	for id, o in iter(self.Objectives) do
 		local ot = o.Type
 		local pg = pglist[ot.AssignedTeam]
 		if not pg then

@@ -1,4 +1,10 @@
-local cell_base = class.new()
+local cell_base = behavior.new()
+
+
+
+function cell_base:initialize()
+	self.EnemySide = class.new("Partition", "common/partition.lua")
+end
 
 -- do periodic stuff for this cell
 function cell_base:update(dt)
@@ -21,11 +27,11 @@ end
 function cell_base:get_vacant_partition(o, for_user)
 	if o.Type.DisplaySide == "user" then
 		for p in iter(self.UserSide) do
-			if not (for_user and p.IsFull) then
+			if not (for_user and p:IsUserFull()) then
 				return p
 			end
 		end	
-		local p = Partition()
+		local p = class.new("Partition", "common/partition.lua")
 		self.UserSide:Add(p)
 		return p
 	else
@@ -35,7 +41,7 @@ end
 -- iterate function for all user in this cell
 function cell_base:iterate_team_list(list, fn, ...)
 	for team_id, ulist in iter(list) do
-		--scplog('iterate_team_list', team_id, ulist.Count)
+		-- scplog('iterate_team_list', team_id, ulist)
 		for u in iter(ulist) do
 			local r = fn(u, ...)
 			if r then 
@@ -46,9 +52,7 @@ function cell_base:iterate_team_list(list, fn, ...)
 end
 -- choose random partition
 function cell_base:random_partition()
-	local cnt = self.UserSide.Count
-	local idx = math.random(0, cnt - 1)
-	return self.UserSide[idx]
+	return self.UserSide:GetRandom()
 end
 -- iterate object/user in it
 function cell_base:for_all_user(fn, ...)
@@ -70,9 +74,12 @@ function cell_base:for_all_user_in_partition(p, fn, ...)
 	self:iterate_team_list(p.Users, fn, ...)
 end
 -- pop object from given id
-function cell_base:pop(id)
-	local o = ObjectFactory.Create(id)
+function cell_base:pop(id, data)
+	local o = ObjectsFactory:Create(id)
+	o.Id = GetField():new_id()
+	o:initialize(data)
 	o:enter_to(self)
+	return o
 end
 -- returns data for desplay cell
 function cell_base:display_data()

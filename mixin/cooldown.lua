@@ -1,4 +1,4 @@
-local cooldown = class.new()
+local cooldown = behavior.new()
 
 function cooldown:init_cooldown()
 	self.Cooldown = self.Type.WaitSec

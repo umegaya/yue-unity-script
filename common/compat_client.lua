@@ -1,6 +1,7 @@
 import('Assembly-CSharp') -- disabled for server code
 import('UnityEngine')
 import('ScriptEngine')
+import('System.IO')
 import = function () end -- script writer will be sandboxed by this.
 
 -- compatibility for lua 5.1 and 5.2
@@ -11,12 +12,13 @@ if DEBUG then
 	function scplog(...)
 		local data = {...}
 		local last_index = (select('#', ...) + 1)
-		data[last_index] = debug.traceback(nil, 2)
-		if data[1] then
-			print(unpack(data, 1, last_index))
-		else
-			print("nil", data[last_index])
+		for i=1,last_index-1 do
+			if not data[i] then
+				data[i] = (data[i] == false and "false" or "nil")
+			end
 		end
+		data[last_index] = debug.traceback(nil, 2)
+		print(unpack(data, 1, last_index))
 	end
 else
 	function scplog(...)
@@ -64,7 +66,8 @@ end)
 
 -- extend pairs function to handle IList and IDictionary with standard lua's syntax
 function _G.iter(t)
-	if type(t) == 'userdata' then
+	local tt = type(t)
+	if tt == 'userdata' then
 		local tp = t:GetType()
 		if tp:GetMethod("GetEnumerator") then
 			if tp:GetMethod("ContainsKey") then
@@ -79,9 +82,16 @@ function _G.iter(t)
 				end, t:GetEnumerator()
 			end
 		end
-	elseif type(t) ~= 'table' then
+	elseif tt == 'cdata' then
+		error("TODO: iterate some kind of cdata")
+	elseif tt ~= 'table' then
 		scplog('type error: should be table or IEnumerable .net object but', type(t), t)
+		return
 	end
-	return pairs(t)
+	if t.__IsList__ then
+		return t:Iter()
+	else
+		return pairs(t)
+	end
 end
 

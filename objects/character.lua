@@ -1,7 +1,7 @@
 local object_base = require 'objects.object_base'
 local util = require 'common.util'
 local action_result = require 'common.action_result'
-local character = class.new(object_base)
+local character = behavior.new(object_base)
 
 function character:initialize(data)
   	self.MaxHp = self.Type.MaxHp
@@ -11,7 +11,7 @@ function character:initialize(data)
     self.Attack = self.Type.Attack
     self.Defense = self.Type.Defense
   	for skill_id in iter(self.Type.Skills) do
-		self.Skills:Add(SkillFactory.Create(skill_id))
+		self.Skills:Add(SkillsFactory:Create(skill_id))
   	end
     return object_base.initialize(self, data)
 end
@@ -25,8 +25,9 @@ function character:do_action()
 end
 
 function character:new_action_result(result_id, name, ...)
-    local ar = ActionResultFactory.Create(result_id, name, ...)
-    return ObjectWrapper.Wrap(ar, "common/action_result.lua")
+    local ar = class.new("ActionResult", "common/action_result.lua")
+    ar:initialize(result_id, name, ...)
+    return ar
 end
 function character:generate_skill_result(result_id, doer, skill, ...)
     local ar = self:new_action_result(result_id, skill.Type.Name, doer, skill, ...)
@@ -82,8 +83,14 @@ end
 
 -- hp/wp
 function character:add_damage(d, notice)
+    if type(d) ~= 'number' then
+        scplog('invalid damage', d)
+    end
     self.Hp = self.Hp - d
     self.Hp = math.max(0, math.min(self.MaxHp, self.Hp))
+    if self.Hp <= 0 then
+        self.IsDead = true
+    end
     if notice then
         self:status_change_event(self)
     end
@@ -104,14 +111,14 @@ function character:resolve_queue()
     -- search coordination chain upto possible longest length
     local now = util.now()
     if (now - self.LastUpdateQueue) > 1.0 then
-        if self.ComboChain.Count > 0 then
+        if self.ComboChain:Size() > 0 then
             self:invoke_combo()
         end
     end
     for ar in iter(self.ActionQueue) do
         local processed
-        if self.ComboChain.Count > 0 then
-            local last = self:LastComboAction()
+        if self.ComboChain:Size() > 0 then
+            local last = self.ComboChain:Last()
             if ar:can_combo_with(last) then
                 self.ComboChain:Add(ar)
                 self.LastUpdateQueue = now
@@ -136,17 +143,17 @@ function character:invoke_combo()
     local name -- chain name like 二段二段二段二段斬り
     local root_ar
     local participants = {}
-    if self.ComboChain.Count <= 1 then
-        self:LastComboAction():invoke(self)
+    if self.ComboChain:Size() <= 1 then
+        self.ComboChain:Last():invoke(self)
         self.ComboChain:Clear()
         return
     end
-    local i, max = 1, self.ComboChain.Count
+    local i, max = 1, self.ComboChain:Size()
     for ar in iter(self.ComboChain) do
-        local skill = ar:skill_arg(1)
+        local skill = ar:skill_arg(2)
         local type = skill.Type
         if not name then
-            root_ar = ar:Clone()
+            root_ar = ar:new_empty_combo_result()
             name = type.Prefix
         elseif i < max then
             name = name .. type.Prefix

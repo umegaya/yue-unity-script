@@ -1,8 +1,8 @@
-local arrangement_base = class.new()
+local arrangement_base = behavior.new()
 
 function arrangement_base:fill_random(team_id,candidates)
 	for id in iter(candidates) do
-		local g = GroupFactory.Create(id)
+		local g = GroupsFactory:Create(id)
 		local cell = GetField():random_cell()
 		g:on_apply_to(cell, team_id)
 	end

@@ -1,23 +1,26 @@
 local user = require 'users.user'
 local util = require 'common.util'
-local game_user = class.new(user)
+local part = require 'common.partition'
+local game_user = behavior.new(user)
 
-function game_user:initialize(id, peer, user_data)
+function game_user:initialize(user_data)
 	for data in iter(user_data.Heroes) do
-		local hero = ObjectFactory.Create(data.Id)
+		local hero = ObjectsFactory:Create(data.Id)
+		hero.Id = GetField():new_id()
 		data.TeamId = user_data.TeamId
-		data.OwnerId = id -- id will be owner 
-		hero:initialize(data, field)
+		data.OwnerId = self.Id 
+		hero:initialize(data)
 		self.Heroes:Add(hero)
 	end
-	self.Objective = GetField().Objectives[user_data.ObjectiveId]
+	self.Objective = GetField().Objectives:Get(user_data.ObjectiveId)
 	self.LastCmdTime = 0
 	self.WaitSec = 0
-	user.initialize(self, id, peer, user_data)
+	user.initialize(self, user_data)
 end
 
 function game_user:battle(orders)
 	for order_target_id, order in iter(orders) do
+		order_target_id = tonumber(order_target_id)
 		local o = GetField():FindObject(order_target_id)
 		if not o then
 			scplog("order target not exist", order_target_id)
@@ -69,7 +72,10 @@ function game_user:enter_to(cell)
 		for h in iter(self.Heroes) do
 			h:enter_to(cell, p)
 		end
-		p:EnterUser(self);
+		p:EnterUser(self)
+		assert(self.Partition)
+	else
+		assert(false, "no partition")
 	end
 end
 
@@ -91,6 +97,9 @@ function game_user:build_scene_payload()
 	local cell = GetField():CellAt(self.X, self.Y)
 	local user_side, enemy_side, terrain = {}, {}, cell:display_data()
 	local p = self.Partition
+	if not p then
+		scplog('no partition')
+		end
 	for team_id, team in iter(p.Teams) do
 		local data = {}
 		for obj in iter(team) do

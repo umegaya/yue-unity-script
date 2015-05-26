@@ -1,4 +1,4 @@
-local action_result = class.new()
+local action_result = behavior.new()
 
 table.merge(action_result, {
 	DAMAGE = 1,
@@ -10,19 +10,36 @@ table.merge(action_result, {
 	TERRAIN_HEAL = 7,
 })
 
+function action_result:initialize(tp, name, ...)
+	self.Type = tp
+	self.Name = name
+	for _, v in ipairs({...}) do
+		self.Args:Add(v)
+	end
+end
+
+function action_result:new_empty_combo_result()
+	local ar = class.new("ActionResult", "common/action_result.lua")
+	ar.Type = self.Type
+	for v in iter(self.Args) do
+		ar.Args:Add(v)
+	end
+	return ar
+end
+
 function action_result:invoke(target)
 	local dead = target.IsDead
 	--scplog('invoke', dead, self.Type)
 	if self.DAMAGE == self.Type then
-		target:add_damage(self:int_arg(2))
+		target:add_damage(self:int_arg(3))
 	elseif self.HEAL == self.Type then
-		target:add_heal(self:int_arg(2))
+		target:add_heal(self:int_arg(3))
 	elseif self.EFFECT == self.Type then
-		target:add_effect(self:skill_arg(1))
+		target:add_effect(self:skill_arg(2))
 	elseif self.TERRAIN_DAMAGE == self.Type then
-		target:add_damage(self:int_arg(0))
+		target:add_damage(self:int_arg(1))
 	elseif self.TERRAIN_HEAL == self.Type then
-		target:add_heal(self:int_arg(0))
+		target:add_heal(self:int_arg(1))
 	elseif self:is_invalid() then
 	end
 	target:action_event(target, self)
@@ -33,11 +50,9 @@ end
 
 function action_result:apply_combo(num_combo, ar)
 	if self.DAMAGE == self.Type then
-		-- self.Args[2] = math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2)));
-		self:SetArg(2, math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2))))
+		self:set_arg(3, math.ceil(1.1 * (ar:int_arg(3) + self:int_arg(3))))
 	elseif self.HEAL == self.Type then
-		-- self.Args[2] = math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2)));
-		self:SetArg(2, math.ceil(1.1 * (ar:int_arg(2) + self:int_arg(2))))
+		self:set_arg(3, math.ceil(1.1 * (ar:int_arg(3) + self:int_arg(3))))
 	elseif self.EFFECT == self.Type then
 		self.Skill.Duration = math.ceil(self.Skill.Duration * 1.1);
 	elseif self:is_invalid() then
@@ -46,7 +61,6 @@ function action_result:apply_combo(num_combo, ar)
 end
 
 function action_result:add_combo_data(combo)
-	self:InitComboData()
 	for ar in iter(combo) do
 		self.ComboData:Add(ar)
 	end
@@ -58,14 +72,14 @@ function action_result:has_invoker()
 end
 function action_result:can_start_combo()
 	if self:has_invoker() then
-		local skill = self:skill_arg(1)
+		local skill = self:skill_arg(2)
 		return skill.Type.Group ~= nil
 	end
 end
 function action_result:can_combo_with(result)
 	if self:can_start_combo() and result:has_invoker() then
-		local skill = self:skill_arg(1)
-		local result_skill = result:skill_arg(1)
+		local skill = self:skill_arg(2)
+		local result_skill = result:skill_arg(2)
 		for group in iter(skill.Type.AcceptGroups) do
 			if group == result_skill.Type.Group then
 				return true
@@ -78,44 +92,52 @@ function action_result:is_invalid()
 	return self.IMMUTE == self.Type or self.DODGE == self.Type
 end
 function action_result:int_arg(idx)
-	return self:IntArg(idx)
+	return self.Args[idx]
 end
 function action_result:str_arg(idx)
-	return self:StrArg(idx)
+	return self.Args[idx]
 end
 function action_result:skill_arg(idx)
-	return self:SkillArg(idx)
+	return self.Args[idx]
 end
 function action_result:object_arg(idx)
-	return self:ObjectArg(idx)
+	return self.Args[idx]
+end
+function action_result:set_arg(idx, v)
+	self.Args[idx] = v
 end
 
-function action_result:display_data()
+function action_result:display_data(recurse)
 	local r = {
 		Type = self.Type,
 		Name = self.Name,
 	}
 	if self.DAMAGE == self.Type then
-		r.AttackerId = self:object_arg(0).Id
-		r.Damage = self:int_arg(2)
+		r.AttackerId = self:object_arg(1).Id
+		r.Damage = self:int_arg(3)
 
 	elseif self.TERRAIN_DAMAGE == self.Type then
-		r.Damage = self:int_arg(0)
+		r.Damage = self:int_arg(1)
 
 	elseif self.HEAL == self.Type then
-		r.AttackerId = self:object_arg(0).Id
-		r.Heal = self:int_arg(2)
+		r.AttackerId = self:object_arg(1).Id
+		r.Heal = self:int_arg(3)
 
 	elseif self.TERRAIN_HEAL == self.Type then
-		r.Heal = self:int_arg(0)
+		r.Heal = self:int_arg(1)
 
 	elseif self.EFFECT == self.Type then
-		r.AttackerId = self:object_arg(0).Id
-		r.Skill = self:skill_arg(1):display_data()
+		r.AttackerId = self:object_arg(1).Id
+		r.Skill = self:skill_arg(2):display_data()
 		
 	elseif self:is_invalid() then
 	end
-	if self.ComboData and self.ComboData.Count > 0 then
+	if self.ComboData and self.ComboData:Size() > 0 then
+		if recurse then
+			scplog('element of combodata should not have combodata')
+			error('err')
+			return
+		end
 		local ComboData = {}
 		for ar in iter(self.ComboData) do
 			table.insert(ComboData, ar:display_data(true))

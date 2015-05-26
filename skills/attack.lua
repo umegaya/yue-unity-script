@@ -1,6 +1,6 @@
 local skill_base = require 'skills.skill_base'
 local action_result = require 'common.action_result'
-local attack = class.new(skill_base)
+local attack = behavior.new(skill_base)
 
 function attack:add_bonus_damage(base_damage)
 	if self.Type.BonusType == "add" then

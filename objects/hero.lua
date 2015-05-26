@@ -1,5 +1,5 @@
 local character = require 'objects.character'
-local hero = class.new(character)
+local hero = behavior.new(character)
 
 function hero:initialize(data)
 	self.OwnerId = data.OwnerId
@@ -16,7 +16,7 @@ function hero:initialize(data)
 	-- TODO : apply equipped skill, not use data from characertypebase.
 	-- (after that, Type.Skills should move to NPCObjectTypes)
   	for skill_id in iter(self.Type.Skills) do
-		self.Skills:Add(SkillFactory.Create(skill_id))
+		self.Skills:Add(SkillsFactory:Create(skill_id))
   	end
 	-- hero enter into field with owner, so does not enter by itself, only added to objectmap
 	GetField().ObjectMap:Add(self.Id, self)
