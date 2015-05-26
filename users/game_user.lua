@@ -97,9 +97,6 @@ function game_user:build_scene_payload()
 	local cell = GetField():CellAt(self.X, self.Y)
 	local user_side, enemy_side, terrain = {}, {}, cell:display_data()
 	local p = self.Partition
-	if not p then
-		scplog('no partition')
-		end
 	for team_id, team in iter(p.Teams) do
 		local data = {}
 		for obj in iter(team) do

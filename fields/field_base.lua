@@ -2,7 +2,6 @@ local field_base = behavior.new()
 
 -- base initialization 
 function field_base:initialize(data)
-	scplog('initialize: field_data', data)
 	for id in iter(data.Objectives) do
 		self.Objectives:Add(id, ObjectivesFactory:Create(id))
 	end

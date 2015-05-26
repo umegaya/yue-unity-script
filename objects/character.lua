@@ -83,9 +83,6 @@ end
 
 -- hp/wp
 function character:add_damage(d, notice)
-    if type(d) ~= 'number' then
-        scplog('invalid damage', d)
-    end
     self.Hp = self.Hp - d
     self.Hp = math.max(0, math.min(self.MaxHp, self.Hp))
     if self.Hp <= 0 then

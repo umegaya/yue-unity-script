@@ -17,22 +17,25 @@ function GetField()
 end
 
 function InitFixData(game_fix_data)
-	class.load_all_decls()
-	game_fix_data = util.decode_json(game_fix_data)
+	if type(game_fix_data) == 'string' then
+		game_fix_data = util.decode_json(game_fix_data)
+	end
 	class.init_fix_data(game_fix_data)
 end
 
-function Initialize(f, field_data)
+function Initialize(field_data)
+	if type(field_data) == 'string' then
+		field_data = util.decode_json(field_data)
+	end
 	field = class.new("FieldBase", "fields/field_base.lua")
-	field_data = util.decode_json(field_data)
 	field:initialize(field_data)
 end
 
 function Enter(otp, peer, user_data)
-	user_data = util.decode_json(user_data)
 	if ServerMode then
 		error("TODO : get id and user_data from otp")
 	else
+		user_data = util.decode_json(user_data)
 		local id = field:new_id()
 		field:login(id, peer, user_data)
 		return id
@@ -44,6 +47,8 @@ function Update(dt)
 end
 
 function SendCommand(id, command)
-	command = util.decode_json(command)
+	if type(command) == 'string' then
+		command = util.decode_json(command)
+	end
 	return field:invoke(id, command)
 end

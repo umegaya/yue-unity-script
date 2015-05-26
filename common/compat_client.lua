@@ -95,3 +95,7 @@ function _G.iter(t)
 	end
 end
 
+function _G.grep(path, pattern)
+	local di = DirectoryInfo(ScriptLoader.SearchPath..path)
+	return di:GetFiles("*.lua", SearchOption.AllDirectories)
+end

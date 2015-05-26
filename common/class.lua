@@ -358,6 +358,7 @@ function class_mt:__index(k)
 end
 
 function _M.init_fix_data(datas)
+	_M.load_all_decls()
 	for k, sources in iter(datas) do
 		if vaults[k] then
 			vaults[k]:initialize(sources)
@@ -383,8 +384,7 @@ function _M.factory(objclass, category_name)
 	return f
 end
 function _M.load_all_decls()
-	local di = DirectoryInfo(ScriptLoader.SearchPath.."data/")
-	for fi in iter(di:GetFiles("*.lua", SearchOption.AllDirectories)) do
+	for fi in iter(grep("data/", "*.lua")) do
 		local tmp = fi.FullName:match("data/(.+)%.lua$")
 		--scplog('fi', fi.FullName, tmp, 'data.'..tmp:gsub('/', '.'))
 		require ('data.'..tmp:gsub('/', '.'))
