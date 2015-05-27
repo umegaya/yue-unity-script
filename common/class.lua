@@ -36,8 +36,15 @@ end
 local empty_string = ""
 local list_mt = {}
 list_mt.__index = list_mt
-function list_mt:Add(elem)
-	table.insert(self, elem)
+if DEBUG then
+	function list_mt:Add(elem)
+		--typecheck(self.__valtype__, elem)
+		table.insert(self, elem)
+	end
+else
+	function list_mt:Add(elem)
+		table.insert(self, elem)
+	end
 end
 function list_mt:Remove(elem)
 	for i=1,#self do 
@@ -79,8 +86,16 @@ end
 
 local dict_mt = {}
 dict_mt.__index = dict_mt
-function dict_mt:Add(k, v)
-	rawset(self, k, v)
+if DEBUG then
+	function dict_mt:Add(k, v)
+		--typecheck(self.__keytype__, k)
+		--typecheck(self.__valtype__, v)
+		rawset(self, k, v)
+	end
+else
+	function dict_mt:Add(k, v)
+		rawset(self, k, v)
+	end
 end
 function dict_mt:Remove(k)
 	rawset(self, k, nil)
@@ -95,6 +110,7 @@ function dict_mt:Size()
 	end
 	return c
 end
+dict_mt.__IsDict__ = true
 local function new_dict()
 	return setmetatable({}, dict_mt)
 end
@@ -111,10 +127,37 @@ local function value_from_dict(dict, k, default)
 			return v
 		end
 	elseif tp == 'table' then
-		return rawget(dict, k) or default
+		return dict[k] or default
 	else
 		assert(false, "invalid dict type:"..tp)
 	end
+end
+
+
+
+local function protect(obj)
+	return setmetatable({}, { __index = obj, 
+		__newindex = function(t, key, value) 
+			scplog("attempted to modify a read only table", key, value)
+			error("modify readonly")
+		end, 
+		__metatable = false 
+	})
+end
+local function protect2(obj)
+	return setmetatable({}, { __index = obj, 
+		__newindex = function(t, key, value) 
+			local err = t.__class__:typecheck(key, value)
+			if not err then
+				local mt = debug.getmetatable(t)
+				rawset(mt.__index, key, value)
+			else
+				scplog("assign error with typecheck:"..err)
+				error(err)
+			end
+		end, 
+		__metatable = false 
+	})
 end
 
 
@@ -134,6 +177,7 @@ function wrap(mc, script_path)
 			error(err)
 		end
 		local mt = { __index = f() }
+		mt.__index.__class__ = mc
 		if ffi then
 			ffi.metatype(ffi.typeof(wcname), mt)
 		else
@@ -292,6 +336,59 @@ function composer_mt:decl()
 		ffi.cdef(table.concat(declstr))
 	end
 end
+function composer_mt:typecheck(k, v)
+	local t = self.declmap[k]
+	if not t then
+		for kk,vv in pairs(self.declmap) do
+			scplog('typecheck', kk, vv, self.name)
+		end
+		return "no such variable:"..k
+	end
+	local vt = type(v)
+	if vt ~= "cdata" then
+		if t == "int" or t == "double" or t == "float" then
+			if vt ~= 'number' then 
+				return "data error: number required but:"..vt
+			end
+		elseif t == "string" then
+			if vt ~= 'string' then 
+				return "data error: string required but:"..vt
+			end
+		elseif t == "bool" then
+			if vt ~= 'boolean' then
+				return "data error: boolean required but:"..vt
+			end
+		elseif t == "object" then
+			if ffi then
+				return "data error: cdata required but:"..vt
+			elseif vt ~= "userdata" then
+				return "data error: userdata required but:"..vt
+			end
+		elseif t:match('^List%s*<') then
+			if vt ~= 'table' or (not v.__IsList__) then
+				return "data error: list required but:"..vt.."|"..tostring(v.__IsList__)
+			end
+		elseif t:match('^Dictionary%s*<') then
+			if vt ~= 'table' or (not v.__IsDict__) then
+				return "data error: dict required but:"..vt.."|"..tostring(v.__IsList__)
+			end
+		else
+			local mt = metaclass[t]
+			if mt then
+				if vt ~= "table" or (not v.__class__) then
+					return "data error: child class of ["..mt.name.."] required but:"..vt.."|"..tostring(v.__class__)
+				elseif not v.__class__:derived_by(mt.name) then
+					return "data error: child class of ["..mt.name.."] required but:"..v.__class__.name
+				end
+			else
+				return "invalid assignment:["..k.."] expects ["..t.."] but ["..vt.."] given"
+			end
+		end	
+	else
+		-- because luajit autometically checks type compatibility for cdata
+		assert(ffi)
+	end
+end
 
 
 
@@ -308,7 +405,8 @@ function vault_mt:initialize(datas)
 		if not mc:derived_by(base_class_name) then
 			error(mc.name .. " does not inherit " .. base_class_name)
 		end
-		self.types[id] = mc:new(id, data)
+		local o = mc:new(id, data)
+		self.types[id] = DEBUG and protect(o) or o
 	end
 	--scplog('end vault init', self.typeclass.name)
 end
@@ -348,7 +446,7 @@ function factory_mt:Create(id)
 	if not ffi then
 		setmetatable(o, wc.mt)
 	end
-	return o
+	return DEBUG and protect2(o) or o
 end
 
 

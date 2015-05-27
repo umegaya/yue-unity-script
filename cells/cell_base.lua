@@ -75,6 +75,7 @@ function cell_base:for_all_user_in_partition(p, fn, ...)
 end
 -- pop object from given id
 function cell_base:pop(id, data)
+	--scplog('cellbase:pop', id)
 	local o = ObjectsFactory:Create(id)
 	o.Id = GetField():new_id()
 	o:initialize(data)
