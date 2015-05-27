@@ -2,44 +2,85 @@ local _M = {}
 local vaults = {}
 local metaclass = {}
 local class_and_index_map = {}
+local collection_type_info = {}
 
 
 
-function composer_method_missing(mt, k)
-	local mc = metaclass[k]
-	if not mc then
-		error("child class does not exist. " .. k)
+-- type check based on class declaration
+local function typecheck(t, v)	
+	local vt = type(v)
+	if vt ~= "cdata" then
+		if t == "int" or t == "double" or t == "float" then
+			if vt ~= 'number' then 
+				return "data error: number required but:"..vt
+			end
+		elseif t == "string" then
+			if vt ~= 'string' then 
+				return "data error: string required but:"..vt
+			end
+		elseif t == "bool" then
+			if vt ~= 'boolean' then
+				return "data error: boolean required but:"..vt
+			end
+		elseif t == "object" then
+			if ffi then
+				return "data error: cdata required but:"..vt
+			elseif vt ~= "userdata" then
+				return "data error: userdata required but:"..vt
+			end
+		elseif t:match('^List%s*<') then
+			if vt ~= 'table' or (not v.__IsList__) then
+				return "data error: list required but:"..vt.."|"..tostring(v.__IsList__)
+			end
+		elseif t:match('^Dictionary%s*<') then
+			if vt ~= 'table' or (not v.__IsDict__) then
+				return "data error: dict required but:"..vt.."|"..tostring(v.__IsDict__)
+			end
+		else
+			local mt = metaclass[t]
+			if mt then
+				if vt ~= "table" or (not v.__class__) then
+					return "data error: child class of ["..mt.name.."] required but:"..vt.."|"..tostring(v.__class__)
+				elseif not v.__class__:derived_by(mt.name) then
+					return "data error: child class of ["..mt.name.."] required but:"..v.__class__.name
+				end
+			else
+				return "invalid assignment:["..k.."] expects ["..t.."] but ["..vt.."] given"
+			end
+		end	
+	else
+		-- because luajit autometically checks type compatibility for cdata
+		assert(ffi)
 	end
-	--scplog('import_decl', mc.name)
-	local self = getmetatable(mt).__data
-	self:import_decls(mc)
-	self.parent = mc
-	return self
 end
-function composer_call(self, decl, decl2)
-	-- because extend uses class.Hoge:Extend [[]] syntax, class.Hoge is passed to composer_call because of : operator.
-	-- in such case self == decl because class.Hoge:Extend returns class.Hoge.
-	-- otherwise (in case of class.Hoge [[]]) declaration is passed to here as 2nd arg.
-	-- following line checks which argument is declaration.
-	decl = (self == decl and decl2 or decl)
-	--scplog('decl', decl)
-	for type, name in self:parse(decl) do
-		--scplog('type/name', type, name)
-		table.insert(self.decls, { type, name })
-		self.declmap[name] = type
-	end	
-	self:decl()
+
+local function typecheck_and_report(t, v)
+	if t then
+		local msg = typecheck(t, v)
+		if msg then
+			scplog(msg)
+			error(msg)
+		end
+	end
 end
 
 
 
-local empty_string = ""
-local list_mt = {}
+-- default variables
+local empty_string = "" -- string default
+-- collections
+local list_mt, dict_mt = { __IsList__ = true }, {  __IsDict__ = true }
+if not ServerMode then
+-- client side list implementation
 list_mt.__index = list_mt
 if DEBUG then
 	function list_mt:Add(elem)
-		--typecheck(self.__valtype__, elem)
+		local i = collection_type_info[self]
+		typecheck_and_report(i.__valtype__, v)
 		table.insert(self, elem)
+	end
+	function list_mt:__gc()
+		collection_type_info[self] = nil
 	end
 else
 	function list_mt:Add(elem)
@@ -72,7 +113,6 @@ function list_mt:Clear()
 		self[i] = nil
 	end
 end
-list_mt.__IsList__ = true
 function list_mt:Iter()
 	self.__cursor__ = 0
 	return function (t)
@@ -80,17 +120,17 @@ function list_mt:Iter()
 		return t[t.__cursor__]
 	end, self
 end
-local function new_list()
-	return setmetatable({}, list_mt)
-end
-
-local dict_mt = {}
+-- client side dict implementation
 dict_mt.__index = dict_mt
 if DEBUG then
 	function dict_mt:Add(k, v)
-		--typecheck(self.__keytype__, k)
-		--typecheck(self.__valtype__, v)
+		local i = collection_type_info[self]
+		typecheck_and_report(i.__keytype__, k)
+		typecheck_and_report(i.__valtype__, v)
 		rawset(self, k, v)
+	end
+	function dict_mt:__gc()
+		collection_type_info[self] = nil
 	end
 else
 	function dict_mt:Add(k, v)
@@ -110,11 +150,10 @@ function dict_mt:Size()
 	end
 	return c
 end
-dict_mt.__IsDict__ = true
-local function new_dict()
-	return setmetatable({}, dict_mt)
-end
-
+else -- end of collection client side implementation
+assert(false, "ServerMode should implement cdata list/dict")
+end 
+-- safely get data from dictoinary
 local function value_from_dict(dict, k, default)
 	local tp = type(dict)
 	if tp == 'userdata' then
@@ -132,9 +171,37 @@ local function value_from_dict(dict, k, default)
 		assert(false, "invalid dict type:"..tp)
 	end
 end
+-- create list/dict
+local new_list, new_dict
+if DEBUG then
+	function new_dict(size, k, v)
+		assert(k and v, "should specify key and value type of collection")
+		local t = setmetatable({}, dict_mt)
+		collection_type_info[t] = {
+			__keytype__ = k,
+			__valtype__ = v,
+		}
+		return t
+	end
+	function new_list(size, v)
+		assert(v, "should specify value type of collection")
+		local t = setmetatable({}, list_mt)
+		collection_type_info[t] = {
+			__keytype__ = v,
+		}
+		return t
+	end
+else
+	function new_dict(size, k, v)
+		return setmetatable({}, dict_mt)
+	end
+	function new_list(size, v)
+		return setmetatable({}, list_mt)
+	end
+end
 
 
-
+-- protection: check type consistency on the fly (only when DEBUG is on)
 local function protect(obj)
 	return setmetatable({}, { __index = obj, 
 		__newindex = function(t, key, value) 
@@ -161,7 +228,7 @@ local function protect2(obj)
 end
 
 
-
+-- wrapper: manage metatable for each script variable object.
 local wrapped_class_map = { __seed__ = 1 }
 function wrap(mc, script_path)
 	local tmp = wrapped_class_map
@@ -191,8 +258,35 @@ end
 
 
 
+-- composer: build class and store information about it
 local composer_mt = {}
 composer_mt.__index = composer_mt
+local function composer_method_missing(mt, k)
+	local mc = metaclass[k]
+	if not mc then
+		scplog('no parent class', k)
+		error("perent class does not exist. " .. k)
+	end
+	--scplog('import_decl', mc.name)
+	local self = getmetatable(mt).__data
+	self:import_decls(mc)
+	self.parent = mc
+	return self
+end
+local function composer_call(self, decl, decl2)
+	-- because extend uses class.Hoge:Extend [[]] syntax, class.Hoge is passed to composer_call because of : operator.
+	-- in such case self == decl because class.Hoge:Extend returns class.Hoge.
+	-- otherwise (in case of class.Hoge [[]]) declaration is passed to here as 2nd arg.
+	-- following line checks which argument is declaration.
+	decl = (self == decl and decl2 or decl)
+	--scplog('decl', decl)
+	for type, name in self:parse(decl) do
+		--scplog('type/name', type, name)
+		table.insert(self.decls, { type, name })
+		self.declmap[name] = type
+	end	
+	self:decl()
+end
 function composer_mt.create(k)
 	if metaclass[k] then
 		return metaclass[k]
@@ -201,6 +295,7 @@ function composer_mt.create(k)
 		name = k,
 		decls = {},
 		declmap = {},
+		parent = false,
 	}
 	metaclass[k] = setmetatable(data, {
 		__index = setmetatable(composer_mt, { 
@@ -258,13 +353,21 @@ function composer_mt:fill_default(p)
 				if ffi then
 					error("TODO: implement cdata List and initialize it")
 				else
-					p[k] = new_list()
+					if DEBUG then
+						p[k] = new_list(nil, v:match('^List%s*<%s*([%w<>]+)%s*>'))
+					else
+						p[k] = new_list()
+					end
 				end
 			elseif v:match('^Dictionary%s*<') then
 				if ffi then
 					error("TODO: implement cdata Dict and initialize it")
 				else
-					p[k] = new_dict()
+					if DEBUG then
+						p[k] = new_dict(nil, v:match('^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'))
+					else
+						p[k] = new_dict()
+					end
 				end
 			else
 				local mc = metaclass[v] 
@@ -344,54 +447,12 @@ function composer_mt:typecheck(k, v)
 		end
 		return "no such variable:"..k
 	end
-	local vt = type(v)
-	if vt ~= "cdata" then
-		if t == "int" or t == "double" or t == "float" then
-			if vt ~= 'number' then 
-				return "data error: number required but:"..vt
-			end
-		elseif t == "string" then
-			if vt ~= 'string' then 
-				return "data error: string required but:"..vt
-			end
-		elseif t == "bool" then
-			if vt ~= 'boolean' then
-				return "data error: boolean required but:"..vt
-			end
-		elseif t == "object" then
-			if ffi then
-				return "data error: cdata required but:"..vt
-			elseif vt ~= "userdata" then
-				return "data error: userdata required but:"..vt
-			end
-		elseif t:match('^List%s*<') then
-			if vt ~= 'table' or (not v.__IsList__) then
-				return "data error: list required but:"..vt.."|"..tostring(v.__IsList__)
-			end
-		elseif t:match('^Dictionary%s*<') then
-			if vt ~= 'table' or (not v.__IsDict__) then
-				return "data error: dict required but:"..vt.."|"..tostring(v.__IsList__)
-			end
-		else
-			local mt = metaclass[t]
-			if mt then
-				if vt ~= "table" or (not v.__class__) then
-					return "data error: child class of ["..mt.name.."] required but:"..vt.."|"..tostring(v.__class__)
-				elseif not v.__class__:derived_by(mt.name) then
-					return "data error: child class of ["..mt.name.."] required but:"..v.__class__.name
-				end
-			else
-				return "invalid assignment:["..k.."] expects ["..t.."] but ["..vt.."] given"
-			end
-		end	
-	else
-		-- because luajit autometically checks type compatibility for cdata
-		assert(ffi)
-	end
+	return typecheck(t, v)
 end
 
 
 
+-- vault: manage fix script data
 local vault_mt = {}
 vault_mt.__index = vault_mt
 function vault_mt:initialize(datas)
@@ -416,6 +477,7 @@ end
 
 
 
+-- factory: manage variable script data
 local factory_mt = {}
 factory_mt.__index = factory_mt
 function factory_mt:Create(id)
@@ -450,6 +512,8 @@ function factory_mt:Create(id)
 end
 
 
+
+-- main class module
 local class_mt = {}
 function class_mt:__index(k)
 	return composer_mt.create(k)

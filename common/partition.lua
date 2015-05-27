@@ -3,10 +3,10 @@ local partition = behavior.new()
 partition.MAX_USER = 5
 
 function partition:Enter(o)
-	self:CommonEnter(self.Teams, o)
+	self:CommonEnter(self.Teams, o, "ObjectBase")
 end
 function partition:EnterUser(u)
-	self:CommonEnter(self.Users, u)
+	self:CommonEnter(self.Users, u, "User")
 end
 function partition:IsUserFull()
 	local cnt = 0
@@ -15,11 +15,11 @@ function partition:IsUserFull()
 	end
 	return cnt >= paritition.MAX_USER
 end
-function partition:CommonEnter(d, o)
+function partition:CommonEnter(d, o, t)
 	local team_id = o.Team.Type.Id
 	local list = d:Get(team_id)
 	if not list then
-		list = class.new_list()
+		list = class.new_list(nil, t)
 		d:Add(team_id, list)
 	end
 	list:Add(o)

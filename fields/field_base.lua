@@ -19,9 +19,9 @@ end
 function field_base:init_cells(ids)
 	self.SizeX = #ids
 	self.SizeY = #(ids[1])
-	self.Cells = class.new_list(self.SizeY)
+	self.Cells = class.new_list(self.SizeY, "CellBase")
 	for i=1,self.SizeY do -- y
-		local rows = class.new_list(self.SizeX)
+		local rows = class.new_list(self.SizeX, "CellBase")
 		for j=1,self.SizeX do -- x
 			rows[j] = CellsFactory:Create(ids[j][i])
 			rows[j]:initialize()
