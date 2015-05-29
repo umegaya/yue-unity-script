@@ -183,7 +183,7 @@ end
 else
 --=======================================================
 -- server side dict/list impl
-ffi - require 'engine.ffi'
+ffi = require 'engine.ffi'
 local memory = require 'engine.memory'
 local array = require 'engine.array'
 local hash = require 'engine.hash'
