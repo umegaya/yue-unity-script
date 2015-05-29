@@ -128,6 +128,9 @@ function field_base:for_all_user(fn, ...)
 			if r then
 				return r
 			end
+			if ServerMode then
+				_G.luact.clock.sleep(1.0)
+			end
 		end
 	end	
 end
@@ -147,11 +150,12 @@ function field_base:end_field(winner)
 	self:for_all_user(function (user)
 		local ev = user:reward(self)
 		ev.Winner = winner
+		if ServerMode then
+			ev.ShutdownWait = 15 -- after 15 seconds wait, user will remove from field
+			_G:queue_user_exit(user, ev.ShutdownWait)
+		end
 		user:end_event(ev) -- show winner and reward and status change to client
 	end)
-	if ServerMode then
-		system.queue_destroy(self)
-	end
 	self.Finished = true
 end
 -- check this field finished or not by checking objective progress

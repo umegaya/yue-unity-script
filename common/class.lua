@@ -1,4 +1,5 @@
 local _M = {}
+local ffi
 local vaults = {}
 local metaclass = {}
 local class_and_index_map = {}
@@ -70,7 +71,9 @@ end
 local empty_string = "" -- string default
 -- collections
 local list_mt, dict_mt = { __IsList__ = true }, {  __IsDict__ = true }
+local new_list, new_dict
 if not ServerMode then
+--=======================================================
 -- client side list implementation
 list_mt.__index = list_mt
 if DEBUG then
@@ -150,29 +153,7 @@ function dict_mt:Size()
 	end
 	return c
 end
-else -- end of collection client side implementation
-assert(false, "ServerMode should implement cdata list/dict")
-end 
--- safely get data from dictoinary
-local function value_from_dict(dict, k, default)
-	local tp = type(dict)
-	if tp == 'userdata' then
-		return dict:ContainsKey(k) and dict[k] or default
-	elseif tp == 'cdata' then
-		local v = dict[k]
-		if (not v) or (ffi.typeof(v):match('%*') and v == ffi.cast(ffi.typeof(v), 0)) then
-			return default
-		else
-			return v
-		end
-	elseif tp == 'table' then
-		return dict[k] or default
-	else
-		assert(false, "invalid dict type:"..tp)
-	end
-end
 -- create list/dict
-local new_list, new_dict
 if DEBUG then
 	function new_dict(size, k, v)
 		assert(k and v, "should specify key and value type of collection")
@@ -199,6 +180,41 @@ else
 		return setmetatable({}, list_mt)
 	end
 end
+else
+--=======================================================
+-- server side dict/list impl
+ffi - require 'engine.ffi'
+local memory = require 'engine.memory'
+local array = require 'engine.array'
+local hash = require 'engine.hash'
+function new_dict(size, k, v)
+	return memory.alloc(hash.new(k, v))
+end
+function new_list(size, v)
+	return memory.alloc(array.new(v))
+end	
+end -- end of collection implementation
+
+
+
+-- safely get data from dictoinary
+local function value_from_dict(dict, k, default)
+	local tp = type(dict)
+	if tp == 'userdata' then
+		return dict:ContainsKey(k) and dict[k] or default
+	elseif tp == 'cdata' then
+		local v = dict[k]
+		if (not v) or (ffi.typeof(v):match('%*') and v == ffi.cast(ffi.typeof(v), 0)) then
+			return default
+		else
+			return v
+		end
+	elseif tp == 'table' then
+		return dict[k] or default
+	else
+		assert(false, "invalid dict type:"..tp)
+	end
+end 
 
 
 -- protection: check type consistency on the fly (only when DEBUG is on)
@@ -351,7 +367,7 @@ function composer_mt:fill_default(p)
 				p[k] = nil
 			elseif v:match('^List%s*<') then
 				if ffi then
-					error("TODO: implement cdata List and initialize it")
+					p[k] = new_list(nil, v:match('^List%s*<%s*([%w<>]+)%s*>'))
 				else
 					if DEBUG then
 						p[k] = new_list(nil, v:match('^List%s*<%s*([%w<>]+)%s*>'))
@@ -361,7 +377,7 @@ function composer_mt:fill_default(p)
 				end
 			elseif v:match('^Dictionary%s*<') then
 				if ffi then
-					error("TODO: implement cdata Dict and initialize it")
+					p[k] = new_dict(nil, v:match('^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'))
 				else
 					if DEBUG then
 						p[k] = new_dict(nil, v:match('^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'))
@@ -424,9 +440,6 @@ function composer_mt:parse(decl)
 	return decl:gmatch('(%a[%w,%s<>]*)%s+([%w]+);')
 end
 function composer_mt:decl_variable(d)
-	if ServerMode then
-		assert(false, "In ServerMode, should treat List/Dictionary correctly")
-	end
 	return ("%s %s;"):format(unpack(d))
 end
 function composer_mt:decl()

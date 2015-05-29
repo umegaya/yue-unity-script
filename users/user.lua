@@ -11,6 +11,7 @@ end
 function user:close()
 	if ServerMode then
 		-- TODO : do something to connection
+		luact.close_peer()
 	end
 end
 

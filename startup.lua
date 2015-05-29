@@ -31,9 +31,9 @@ function Initialize(field_data)
 	field:initialize(field_data)
 end
 
-function Enter(otp, peer, user_data)
+function Enter(user_id, peer, user_data)
 	if ServerMode then
-		error("TODO : get id and user_data from otp")
+		field:login(user_id, peer, user_data)
 	else
 		user_data = util.decode_json(user_data)
 		local id = field:new_id()
