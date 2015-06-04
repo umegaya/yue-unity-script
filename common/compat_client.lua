@@ -25,45 +25,6 @@ else
 	end
 end
 
--- client hack to add lua function method to .net object.
-local function set_index_table(obj, mt)
-	if type(obj) == 'userdata' then
-		-- dotnet metatable replace hack. __index modified
-		if mt then
-			local orig_mt = debug.getmetatable(obj)
-			local orig_index = orig_mt.__index
-			function orig_mt.__index(t, k)
-				local v = rawget(mt, k)
-				return v or orig_index(t, k)
-			end
-		else
-			scplog('warn: only __index can be applied to .NET objects')
-		end
-		return obj
-	end
-end
-
--- make obj runnable in script system
--- client : add lua function which is defined in corresponding script
-ObjectWrapper.Initialize(function (obj, src)
-	local scp = src or obj.Type.Script
-	if not scp then
-		scplog('loadscript error:', 'neither function args nor data provides script path')
-		error('script path error')
-	end
-	local f, err = loadfile(ScriptLoader.SearchPath..scp)
-	if not f then
-		scplog('loadscript error:', scp, err)
-		error(err)
-	end
-	local mt = f()
-	if type(mt) ~= 'table' then
-		scplog('loadscript error:', scp, 'returns non-table object')
-		error('type error')
-	end
-	return set_index_table(obj, mt)
-end)
-
 -- extend pairs function to handle IList and IDictionary with standard lua's syntax
 function _G.iter(t)
 	local tt = type(t)
@@ -82,8 +43,6 @@ function _G.iter(t)
 				end, t:GetEnumerator()
 			end
 		end
-	elseif tt == 'cdata' then
-		error("TODO: iterate some kind of cdata")
 	elseif tt ~= 'table' then
 		scplog('type error: should be table or IEnumerable .net object but', type(t), t)
 		return
@@ -95,7 +54,10 @@ function _G.iter(t)
 	end
 end
 
-function _G.grep(path, pattern)
+function _G.grep(path, pattern, fn, ...)
 	local di = DirectoryInfo(ScriptLoader.SearchPath..path)
-	return di:GetFiles("*.lua", SearchOption.AllDirectories)
+	local list = di:GetFiles("*.lua", SearchOption.AllDirectories)
+	for f in iter(list) do
+		fn(f.FullName, ...)
+	end
 end

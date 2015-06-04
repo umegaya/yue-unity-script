@@ -152,11 +152,14 @@ function field_base:end_field(winner)
 		ev.Winner = winner
 		if ServerMode then
 			ev.ShutdownWait = 15 -- after 15 seconds wait, user will remove from field
-			_G:queue_user_exit(user, ev.ShutdownWait)
+			_G._queue_user_exit(user, ev.ShutdownWait)
 		end
 		user:end_event(ev) -- show winner and reward and status change to client
 	end)
 	self.Finished = true
+	if ServerMode then
+		_G._queue_field_destroy(self)
+	end
 end
 -- check this field finished or not by checking objective progress
 function field_base:check_completion()

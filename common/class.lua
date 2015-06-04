@@ -72,9 +72,6 @@ local empty_string = "" -- string default
 -- collections
 local list_mt, dict_mt = { __IsList__ = true }, {  __IsDict__ = true }
 local new_list, new_dict
-if not ServerMode then
---=======================================================
--- client side list implementation
 list_mt.__index = list_mt
 if DEBUG then
 	function list_mt:Add(elem)
@@ -153,7 +150,9 @@ function dict_mt:Size()
 	end
 	return c
 end
--- create list/dict
+if not ServerMode then
+--=======================================================
+-- client side list implementation
 if DEBUG then
 	function new_dict(size, k, v)
 		assert(k and v, "should specify key and value type of collection")
@@ -187,6 +186,7 @@ ffi = require 'engine.ffi'
 local memory = require 'engine.memory'
 local array = require 'engine.array'
 local hash = require 'engine.hash'
+local string = require 'engine.string'
 function new_dict(size, k, v)
 	return memory.alloc(hash.new(k, v))
 end
@@ -559,11 +559,13 @@ function _M.factory(objclass, category_name)
 	return f
 end
 function _M.load_all_decls()
-	for fi in iter(grep("data/", "*.lua")) do
-		local tmp = fi.FullName:match("data/(.+)%.lua$")
-		--scplog('fi', fi.FullName, tmp, 'data.'..tmp:gsub('/', '.'))
+	-- TODO : unify pattern spec
+	local pattern = ServerMode and ".*%.lua$" or "*.lua"
+	grep("data/", pattern, function (f)
+		scplog('f', f)
+		local tmp = f:match("data/(.+)%.lua$")
 		require ('data.'..tmp:gsub('/', '.'))
-	end
+	end)
 end
 function _M.new(name, script_path)
 	local mc = metaclass[name]
