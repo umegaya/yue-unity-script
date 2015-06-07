@@ -6,13 +6,14 @@ local game_user = behavior.new(user)
 function game_user:initialize(user_data)
 	for data in iter(user_data.Heroes) do
 		local hero = ObjectsFactory:Create(data.Id)
-		hero.Id = GetField():new_id()
+		hero.Id = self.Field:new_id()
+		hero.Field = self.Field
 		data.TeamId = user_data.TeamId
 		data.OwnerId = self.Id 
 		hero:initialize(data)
 		self.Heroes:Add(hero)
 	end
-	self.Objective = GetField().Objectives:Get(user_data.ObjectiveId)
+	self.Objective = self.Field.Objectives:Get(user_data.ObjectiveId)
 	self.LastCmdTime = 0
 	self.WaitSec = 0
 	user.initialize(self, user_data)
@@ -21,7 +22,7 @@ end
 function game_user:battle(orders)
 	for order_target_id, order in iter(orders) do
 		order_target_id = tonumber(order_target_id)
-		local o = GetField():FindObject(order_target_id)
+		local o = self.Field:FindObject(order_target_id)
 		if not o then
 			scplog("order target not exist", order_target_id)
 			break
@@ -43,7 +44,7 @@ function game_user:battle(orders)
 			scplog("no wp", skill.Type.Wp, o.Wp)
 			break
 		end
-		local target = order.TargetId and GetField():FindObject(order.TargetId)
+		local target = order.TargetId and self.Field:FindObject(order.TargetId)
 		skill:use(o, target)
 	end
 end
@@ -94,7 +95,7 @@ end
 
 -- field event to renderer
 function game_user:build_scene_payload()
-	local cell = GetField():CellAt(self.X, self.Y)
+	local cell = self.Field:CellAt(self.X, self.Y)
 	local user_side, enemy_side, terrain = {}, {}, cell:display_data()
 	local p = self.Partition
 	for team_id, team in iter(p.Teams) do
@@ -115,7 +116,7 @@ function game_user:build_scene_payload()
 		UserSide = user_side, EnemySide = enemy_side,
 		Terrain = terrain, 
 		X = self.X, Y = self.Y,
-		Objective = self.Objective:display_data(), 
+		Objective = self.Objective:display_data(self.Field), 
 		TeamStatus = self.Team:display_data() 
 	}
 end
@@ -126,13 +127,13 @@ function game_user:build_action_payload(target, action_result)
 	}
 end
 function game_user:play_event(type, payload)
-	if not _G.ServerMode then
-		if _G.type(payload) ~= 'table' then
-			payload = {payload}
-		end
-		return self.Peer:Play(type, payload)
+	if _G.type(payload) ~= 'table' then
+		payload = {payload}
+	end
+	if _G.ServerMode then
+		return self.Peer:notify_Play(type, payload)
 	else
-		-- TODO : server mode notification
+		return self.Peer:PlayLocal(type, payload)
 	end
 end
 function game_user:action_event(invoker, action_result)

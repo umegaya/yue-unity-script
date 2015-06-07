@@ -1,8 +1,15 @@
 local util = behavior.new()
 local json = require 'common.dkjson'
 
+if _G.ServerMode then
+local luact = require 'luact.init'
+function util.now()
+	return luact.clock.get()
+end
+else
 function util.now()
 	return Time.time
+end
 end
 
 function util.decode_json(jsonstr)

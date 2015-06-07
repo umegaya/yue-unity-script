@@ -2,6 +2,7 @@ local field_base = behavior.new()
 
 -- base initialization 
 function field_base:initialize(data)
+	print(data.Objectives, data.Objectives.__IsList__)
 	for id in iter(data.Objectives) do
 		self.Objectives:Add(id, ObjectivesFactory:Create(id))
 	end
@@ -24,7 +25,7 @@ function field_base:init_cells(ids)
 		local rows = class.new_list(self.SizeX, "CellBase")
 		for j=1,self.SizeX do -- x
 			rows[j] = CellsFactory:Create(ids[j][i])
-			rows[j]:initialize()
+			rows[j]:initialize(self)
 		end
 		self.Cells[i] = rows
 	end
@@ -56,6 +57,7 @@ function field_base:login(id, peer, user_data)
 	local user = ObjectsFactory:Create("user")
 	user.Id = id
 	user.Peer = peer
+	user.Field = self
 	user:initialize(user_data)
 	local cell = self:CellAt(user.Team:pop_point(user))
 	user:enter_to(cell)
@@ -79,7 +81,7 @@ end
 -- prepare objects from data
 function field_base:init_objects(arrangement) 
 	local ar = ArrangementsFactory:Create(arrangement)
-	ar:on_apply_to()
+	ar:on_apply_to(self)
 end
 
 function field_base:update(dt)
@@ -146,20 +148,23 @@ function field_base:for_all_object(fn, ...)
 end
 -- calculate rewards, status change after this battle, and notify it to client with winner
 -- when field finished.
+function field_base:on_end_field()
+end
+function field_base:on_exit_user(user, wait)
+end
+function field_base:on_destroy_field()
+end
 function field_base:end_field(winner)
-	self:for_all_user(function (user)
-		local ev = user:reward(self)
+	self:on_end_field()
+	self:for_all_user(function (user, f)
+		local ev = user:reward(f)
 		ev.Winner = winner
-		if ServerMode then
-			ev.ShutdownWait = 15 -- after 15 seconds wait, user will remove from field
-			_G._queue_user_exit(user, ev.ShutdownWait)
-		end
+		ev.ShutdownWait = 15 -- after 15 seconds wait, user will remove from field
+		f:on_exit_user(user, ev.ShutdownWait)
 		user:end_event(ev) -- show winner and reward and status change to client
-	end)
+	end, self)
 	self.Finished = true
-	if ServerMode then
-		_G._queue_field_destroy(self)
-	end
+	self:on_destroy_field()
 end
 -- check this field finished or not by checking objective progress
 function field_base:check_completion()
@@ -176,7 +181,7 @@ function field_base:check_completion()
 			p = {}
 			pg[ot.Group] = p
 		end
-		p[ot.Id] = o:progress()
+		p[ot.Id] = o:progress(self)
 	end
 	for team_id, team_state in iter(pglist) do
 		-- scplog('team', team_id)
@@ -185,7 +190,7 @@ function field_base:check_completion()
 			for id, progress in iter(gstate) do
 				-- scplog('progress', id, progress)
 				if progress == 100 then -- progress == 100(%), means finished
-					finished = true
+					finished = true	
 					goto on_finished
 				end
 			end

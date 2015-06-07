@@ -13,7 +13,7 @@ function partition:IsUserFull()
 	for k,v in iter(self.Users) do
 		cnt = cnt + v:Size()
 	end
-	return cnt >= paritition.MAX_USER
+	return cnt >= partition.MAX_USER
 end
 function partition:CommonEnter(d, o, t)
 	local team_id = o.Team.Type.Id

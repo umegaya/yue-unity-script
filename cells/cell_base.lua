@@ -1,8 +1,8 @@
 local cell_base = behavior.new()
 
 
-
-function cell_base:initialize()
+function cell_base:initialize(field)
+	self.Field = field
 	self.EnemySide = class.new("Partition", "common/partition.lua")
 end
 
@@ -77,7 +77,8 @@ end
 function cell_base:pop(id, data)
 	--scplog('cellbase:pop', id)
 	local o = ObjectsFactory:Create(id)
-	o.Id = GetField():new_id()
+	o.Id = self.Field:new_id()
+	o.Field = self.Field
 	o:initialize(data)
 	o:enter_to(self)
 	return o

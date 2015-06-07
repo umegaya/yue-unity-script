@@ -1,23 +1,32 @@
 class.FieldBase [[
-	--object's id seed
+	-- object's id seed
 	int IdSeed;
-	--collection of all cells in fields
+	
+	-- collection of all cells in fields
 	List<List<CellBase>> Cells;
-	--x, y of cell size
+	
+	-- x, y of cell size
 	int SizeX;
 	int SizeY;
-	--all team in field
+	
+	-- all team in field
 	Dictionary<string, TeamBase> Teams;
-	--all objectives
+	
+	-- all objectives
 	Dictionary<string, ObjectiveBase> Objectives;
-	--all events
+	
+	-- all events
 	List<EventBase> Events;
-	--object arrangement
+	
+	-- object arrangement
 	ArrangementBase Arrangement;
-	--last update
+	
+	-- last update
 	float LastUpdate;
-	--this field finished?
+	
+	-- this field finished?
 	bool Finished;
-	--id - object mapping
+	
+	-- id - object mapping
 	Dictionary<int, ObjectBase> ObjectMap;
 ]]

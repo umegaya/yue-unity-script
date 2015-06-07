@@ -2,23 +2,6 @@ local fs = require 'pulpo.fs'
 
 _G.scplog = logger.info
 
-if DEBUG then
-	function scplog(...)
-		local data = {...}
-		local last_index = (select('#', ...) + 1)
-		for i=1,last_index-1 do
-			if not data[i] then
-				data[i] = (data[i] == false and "false" or "nil")
-			end
-		end
-		data[last_index] = debug.traceback(nil, 2)
-		print(unpack(data, 1, last_index))
-	end
-else
-	function scplog(...)
-	end
-end
-
 -- extend pairs function to handle IList and IDictionary with standard lua's syntax
 function _G.iter(t)
 	local tt = type(t)
@@ -28,7 +11,11 @@ function _G.iter(t)
 		scplog('type error: should be table or IEnumerable .net object but', type(t), t)
 		return
 	end
-	return pairs(t)
+	if t.__IsList__ then -- json unpacked lua table
+		return t:Iter()
+	else
+		return pairs(t)
+	end
 end
 
 local basepath = debug.getinfo(1).source:match('@(.+)[/¥][^/¥]+$')
@@ -39,3 +26,7 @@ function _G.grep(path, pattern, fn, ...)
 		end
 	end, ...)
 end
+
+_G.ScriptLoader = {
+	SearchPath = basepath.."/../"
+}

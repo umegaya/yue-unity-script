@@ -1,4 +1,5 @@
 require 'data.FixData'
+require 'data.objects.User'
 
 class.Partition [[
 	Dictionary<string, List<User>> Users;
@@ -9,6 +10,7 @@ class.CellTypeBase : FixData [[
 ]]
 class.CellBase [[
 	CellTypeBase Type;
+	FieldBase Field;
 	Partition EnemySide;
 	List<Partition> UserSide;
 ]]

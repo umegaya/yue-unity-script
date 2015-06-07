@@ -6,14 +6,14 @@ function object_base:initialize(data)
 	self:init_cooldown()
 	self:join_team(data.TeamId)
 	self:on_initialize(data)
-	GetField().ObjectMap:Add(self.Id, self)
+	self.Field.ObjectMap:Add(self.Id, self)
 end
 function object_base:on_initialize(data)
 end
 function object_base:destroy()
 	self:leave_team()
-	self:current_cell():exit(self)
-	GetField().ObjectMap:Remove(self.Id)
+	self:exit_from(self:current_cell())
+	self.Field.ObjectMap:Remove(self.Id)
 end
 function object_base:update(dt)
 	if self:cooldown(dt) then
@@ -34,7 +34,7 @@ end
 
 -- get data helper
 function object_base:current_cell()
-	return GetField():CellAt(self.X, self.Y)
+	return self.Field:CellAt(self.X, self.Y)
 end
 function object_base:is_friendly(obj)
 	return self.Team:is_friendly(obj.Team)
@@ -45,7 +45,7 @@ end
 
 -- join/leave team
 function object_base:join_team(team_id)
-	self.Team = GetField().Teams[team_id]
+	self.Team = self.Field.Teams[team_id]
 	self.Team:join(self)
 end
 function object_base:leave_team()
@@ -106,7 +106,9 @@ function object_base:choose_random_visible_object(filter, ...)
 		-- enemy side can see all object, so first choose random user side partition
 		-- to reduce iteration count
 		local p = cell:random_partition()
-		cell:iterate_team_list(p.Teams, filter, cand, ...)
+		if p then
+			cell:iterate_team_list(p.Teams, filter, cand, ...)
+		end
 		cell:iterate_team_list(cell.EnemySide.Teams, filter, cand, ...)
 	end
 	return #cand > 0 and cand[math.random(1, #cand)]
@@ -160,12 +162,12 @@ function object_base:display_data()
 end
 
 function object_base:move(x, y)
-	local c = GetField():CellAt(self.X, self.Y)
+	local c = self.Field:CellAt(self.X, self.Y)
 	if not c then
 		scplog('invalid current position', self.Id, self.X, self.Y)
 		return
 	end
-	local nc = GetField():CellAt(x, y)
+	local nc = self.Field:CellAt(x, y)
 	if not nc then
 		scplog('invalid destination', self.Id, x, y)
 		return

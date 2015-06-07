@@ -15,7 +15,7 @@ end
 
 -- create new behavior instance
 function _M.new(parent, ...)
-	local t = {}
+	local t = _M.base or {}
 	t.__index = t
 	if parent then
 		table.merge(t, parent)

@@ -6,6 +6,11 @@ local class_and_index_map = {}
 local collection_type_info = {}
 
 
+local LIST_TYPE_MATCHER = '^List%s*<'
+local LIST_TYPE_PARAM_INJECTOR = '^List%s*<%s*([%w<>]+)%s*>'
+local DICT_TYPE_MATCHER = '^Dictionary%s*<'
+local DICT_TYPE_PARAM_INJECTOR = '^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'
+
 
 -- type check based on class declaration
 local function typecheck(t, v)	
@@ -29,11 +34,11 @@ local function typecheck(t, v)
 			elseif vt ~= "userdata" then
 				return "data error: userdata required but:"..vt
 			end
-		elseif t:match('^List%s*<') then
+		elseif t:match(LIST_TYPE_MATCHER) then
 			if vt ~= 'table' or (not v.__IsList__) then
 				return "data error: list required but:"..vt.."|"..tostring(v.__IsList__)
 			end
-		elseif t:match('^Dictionary%s*<') then
+		elseif t:match(DICT_TYPE_MATCHER) then
 			if vt ~= 'table' or (not v.__IsDict__) then
 				return "data error: dict required but:"..vt.."|"..tostring(v.__IsDict__)
 			end
@@ -72,6 +77,7 @@ local empty_string = "" -- string default
 -- collections
 local list_mt, dict_mt = { __IsList__ = true }, {  __IsDict__ = true }
 local new_list, new_dict
+local memory, array, hash, _string 
 list_mt.__index = list_mt
 if DEBUG then
 	function list_mt:Add(elem)
@@ -150,7 +156,7 @@ function dict_mt:Size()
 	end
 	return c
 end
-if not ServerMode then
+if true then
 --=======================================================
 -- client side list implementation
 if DEBUG then
@@ -183,10 +189,10 @@ else
 --=======================================================
 -- server side dict/list impl
 ffi = require 'engine.ffi'
-local memory = require 'engine.memory'
-local array = require 'engine.array'
-local hash = require 'engine.hash'
-local string = require 'engine.string'
+memory = require 'engine.memory'
+array = require 'engine.array'
+hash = require 'engine.hash'
+_string = require 'engine.string'
 function new_dict(size, k, v)
 	return memory.alloc(hash.new(k, v))
 end
@@ -245,6 +251,8 @@ end
 
 
 -- wrapper: manage metatable for each script variable object.
+-- to apply different metatable for each struct, we create dummy metaclass which is nothing new member added from base metaclass, 
+-- and using it as actual class.
 local wrapped_class_map = { __seed__ = 1 }
 function wrap(mc, script_path)
 	local tmp = wrapped_class_map
@@ -259,11 +267,35 @@ function wrap(mc, script_path)
 			scplog('loadfile error', err)
 			error(err)
 		end
-		local mt = { __index = f() }
-		mt.__index.__class__ = mc
+		local methods = f()
+		methods.__class__ = mc
 		if ffi then
+			local mt = {
+				__index = function (t, k)
+					local f = rawget(methods, k)
+					return f or rawget(t, "_"..k)				
+				end,
+				__newindex = function (t, k, v)
+					local real_k = "_"..k
+					local curr_v = rawget(t, real_k)
+					if curr_v == v then
+						return
+					end
+					if type(v) == 'string' then
+						rawset(t, real_k, _string.new(v))
+					else
+						rawset(t, real_k, v)
+					end
+					if curr_v ~= nil then
+						memory.free(curr_v)
+					end
+				end
+			}
 			ffi.metatype(ffi.typeof(wcname), mt)
 		else
+			local mt = {
+				__index = methods
+			}
 			wc.mt = mt
 		end
 		tmp[script_path] = wc
@@ -365,25 +397,21 @@ function composer_mt:fill_default(p)
 				p[k] = false
 			elseif v == "object" then
 				p[k] = nil
-			elseif v:match('^List%s*<') then
+			elseif v:match(LIST_TYPE_MATCHER) then
 				if ffi then
-					p[k] = new_list(nil, v:match('^List%s*<%s*([%w<>]+)%s*>'))
+					p[k]:Clear()
+				elseif DEBUG then
+					p[k] = new_list(nil, v:match(LIST_TYPE_PARAM_INJECTOR))
 				else
-					if DEBUG then
-						p[k] = new_list(nil, v:match('^List%s*<%s*([%w<>]+)%s*>'))
-					else
-						p[k] = new_list()
-					end
+					p[k] = new_list()
 				end
-			elseif v:match('^Dictionary%s*<') then
-				if ffi then
-					p[k] = new_dict(nil, v:match('^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'))
+			elseif v:match(DICT_TYPE_MATCHER) then
+				if ffi then 
+					p[k]:Clear()
+				elseif DEBUG then
+					p[k] = new_dict(nil, v:match(DICT_TYPE_PARAM_INJECTOR))
 				else
-					if DEBUG then
-						p[k] = new_dict(nil, v:match('^Dictionary%s*<%s*([%w<>]+)%s*,%s*([%w<>]+)%s*>'))
-					else
-						p[k] = new_dict()
-					end
+					p[k] = new_dict()
 				end
 			else
 				local mc = metaclass[v] 
@@ -409,21 +437,27 @@ function composer_mt:new(id, fixture)
 			p[k] = v
 		elseif t == "string" then
 			assert(type(v) == 'string', "data error: string required but:"..type(v))
-			p[k] = ffi and ffi.cast('char*', v) or v
+			p[k] = ffi and ffi.cast('pulpo_string_t*', v) or v
 		elseif t == "bool" then
 			assert(type(v) == 'boolean', "data error: boolean required but:"..type(v))
 			p[k] = v
-		elseif t:match('^List%s*<') then
-			assert(type(v) == 'table' and v.__IsList__, "data error: list required but:"..type(v))
+		elseif t:match(LIST_TYPE_MATCHER) then
+			assert(type(v) == 'table' and v.__IsList__, "data error: list required but:"..type(v).."|"..tostring(v.__IsList__))
 			if ffi then
-				error("TODO: implement cdata List and initialize it with v")
+				local tmp = p[k]
+				for e in iter(v) do
+					tmp:Add(e)
+				end
 			else
 				p[k] = v
 			end
-		elseif t:match('^Dictionary%s*<') then
-			assert(type(v) == 'table' and (not v.__IsList__), "data error: dictionary required but:"..type(v))
+		elseif t:match(DICT_TYPE_MATCHER) then
+			assert(type(v) == 'table' and (not v.__IsList__), "data error: dictionary required but:"..type(v).."|"..tostring(v.__IsList__))
 			if ffi then
-				error("TODO: implement cdata Dict and initialize it with v")
+				local tmp = p[k]
+				for key,val in iter(v) do
+					tmp:Add(key,val)
+				end
 			else
 				p[k] = v
 			end
@@ -439,17 +473,55 @@ function composer_mt:parse(decl)
 	decl = decl:gsub('%-%-[^%c]*%c', '')
 	return decl:gmatch('(%a[%w,%s<>]*)%s+([%w]+);')
 end
+local function is_primitive_type(t)
+	return t == "double" or t == "bool" or t == "float" or t == "int"
+end
+local function build_nested_generics_type(t)
+	if t == "string" then
+		return ffi.typeof('pulpo_string_t*')
+	elseif t == "object" then
+		return ffi.typeof('void *')
+	elseif t:match(LIST_TYPE_MATCHER) then
+		local v = t:match(LIST_TYPE_PARAM_INJECTOR)
+		return array.new(build_nested_generics_type(v))
+	elseif t:match(DICT_TYPE_MATCHER) then
+		local k, v = t:match(DICT_TYPE_PARAM_INJECTOR)
+		return hash.new(build_nested_generics_type(k), build_nested_generics_type(v))
+	elseif is_primitive_type(t) then
+		return ffi.typeof(t)
+	else
+		logger.warn('t = ', t)
+		return ffi.typeof(("struct _%s *"):format(t))
+	end
+end
 function composer_mt:decl_variable(d)
-	return ("%s %s;"):format(unpack(d))
+	local t = d[1]
+	if t == 'string' then
+		return ("$ *_%s;"):format(d[2]), ffi.typeof('pulpo_string_t')
+	elseif t == 'object' then
+		return ("void *%s;"):format(d[2])
+	elseif t:match(LIST_TYPE_MATCHER) then
+		return ("$ %s;"):format(d[2]), build_nested_generics_type(t)
+	elseif t:match(DICT_TYPE_MATCHER) then
+		return ("$ %s;"):format(d[2]), build_nested_generics_type(t)
+	elseif is_primitive_type(t) then
+		return ("%s %s;"):format(unpack(d))
+	else
+		return ("struct _%s *%s;"):format(unpack(d))
+	end
 end
 function composer_mt:decl()
 	if ffi then
+		local parm_types = {}
 		local declstr = {("typedef struct _%s {"):format(self.name)}
 		for i=1,#self.decls do
-			table.insert(declstr, self:decl_variable(self.decls[i]))
+			local src, pt = self:decl_variable(self.decls[i])
+			table.insert(declstr, src)
+			table.insert(parm_types, pt)
 		end
 		table.insert(declstr, ("} %s;"):format(self.name))
-		ffi.cdef(table.concat(declstr))
+		logger.report(table.concat(declstr))
+		ffi.cdef(table.concat(declstr), unpack(parm_types))
 	end
 end
 function composer_mt:typecheck(k, v)
@@ -485,6 +557,9 @@ function vault_mt:initialize(datas)
 	--scplog('end vault init', self.typeclass.name)
 end
 function vault_mt:GetFixData(id)
+	if not self.types then
+		logger.error('types not initialized')
+	end
 	return self.types[id]
 end
 
@@ -499,7 +574,10 @@ function factory_mt:Create(id)
 	end
 	local t = self.vault:GetFixData(id)
 	if not t then
-		error("id does not exists:"..self.id)
+		for vid, _ in pairs(self.vault.types) do
+			logger.info('not found', id, vid)
+		end
+		error("id does not exists:"..id)
 	end
 	local base_class_name = self.objclass.name
 	local name = value_from_dict(t, "Class", base_class_name)
@@ -558,13 +636,20 @@ function _M.factory(objclass, category_name)
 	_G[category_name.."Factory"] = f
 	return f
 end
+local function load_decl_error_handler(e)
+	return tostring(e).."\n"..debug.traceback()
+end
 function _M.load_all_decls()
 	-- TODO : unify pattern spec
 	local pattern = ServerMode and ".*%.lua$" or "*.lua"
 	grep("data/", pattern, function (f)
 		scplog('f', f)
-		local tmp = f:match("data/(.+)%.lua$")
-		require ('data.'..tmp:gsub('/', '.'))
+		local tmp = f:gsub('//+', '/'):match("data/(.+)%.lua$")
+		local ok, r = xpcall(require, load_decl_error_handler, ('data.'..tmp:gsub('/', '.')))
+		if not ok then
+			scplog('load_all_decls', 'error', r)
+			error(r)
+		end
 	end)
 end
 function _M.new(name, script_path)

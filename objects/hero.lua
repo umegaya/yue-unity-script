@@ -3,7 +3,7 @@ local hero = behavior.new(character)
 
 function hero:initialize(data)
 	self.OwnerId = data.OwnerId
-	self.Team = GetField().Teams[data.TeamId]
+	self.Team = self.Field.Teams[data.TeamId]
 	self.Team:join(self)
     -- TODO : should apply this character's growth (level or exp?)
 	-- Growth factor should added to HeroObjectType
@@ -19,7 +19,7 @@ function hero:initialize(data)
 		self.Skills:Add(SkillsFactory:Create(skill_id))
   	end
 	-- hero enter into field with owner, so does not enter by itself, only added to objectmap
-	GetField().ObjectMap:Add(self.Id, self)
+	self.Field.ObjectMap:Add(self.Id, self)
 end
 function hero:initial_pop()
 end
@@ -31,7 +31,7 @@ function hero:display_data()
 end
 
 function hero:get_owner()
-	return GetField():FindObject(self.OwnerId)
+	return self.Field:FindObject(self.OwnerId)
 end
 
 return hero

@@ -37,7 +37,7 @@ function skill_base:get_target(user, range)
 	elseif range == "cell" then
 		return user:current_cell()
 	elseif range == "field" then
-		return GetField()
+		return user.Field
 	end
 end
 
@@ -59,7 +59,7 @@ function skill_base:use(user, target)
 				sk:on_use(u, obj)
 			end
 		end, user, skill)
-	else
+	elseif target then
 		-- target == CellBase
 		-- target == FieldBase
 		target:for_all_object(function (obj, u, sk)
@@ -67,8 +67,11 @@ function skill_base:use(user, target)
 				sk:on_use(u, obj)
 			end
 		end, user, skill)
+	else
+		return false
 	end
 	user:consume_wp(self.Type.Wp)
+	return true
 end
 
 -- callback: should override in child

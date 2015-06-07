@@ -8,6 +8,7 @@ class.vault(class.ObjectTypeBase, "Objects")
 class.ObjectBase [[
 	int Id;
 	ObjectTypeBase Type;
+	FieldBase Field;
 	Partition Partition;
 	TeamBase Team;
 	int X;

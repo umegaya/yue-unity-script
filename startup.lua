@@ -1,20 +1,10 @@
--- TODO : this is time-eater? if so, we need to reuse single lua env.
-if import then
-	require 'common.compat_client' -- compatibility layer for client
-else
-	_G.ServerMode = true
-	require 'common.compat_server' -- compatibility layer for server
-end
+require 'common.compat_client' -- compatibility layer for client
 -- setup global modules
 _G.behavior = require 'common.behavior'
 _G.class = require 'common.class'
+
 -- setup local module
 local util = require 'common.util'
-
-local field
-function GetField()
-	return field
-end
 
 function InitFixData(game_fix_data)
 	if type(game_fix_data) == 'string' then
@@ -32,14 +22,10 @@ function Initialize(field_data)
 end
 
 function Enter(user_id, peer, user_data)
-	if ServerMode then
-		field:login(user_id, peer, user_data)
-	else
-		user_data = util.decode_json(user_data)
-		local id = field:new_id()
-		field:login(id, peer, user_data)
-		return id
-	end
+	user_data = util.decode_json(user_data)
+	local id = field:new_id()
+	field:login(id, peer, user_data)
+	return id
 end
 
 function Update(dt)
