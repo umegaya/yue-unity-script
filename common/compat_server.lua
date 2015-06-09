@@ -1,6 +1,6 @@
 local fs = require 'pulpo.fs'
 
-_G.scplog = logger.info
+_G.scplog = logger.warn
 
 -- extend pairs function to handle IList and IDictionary with standard lua's syntax
 function _G.iter(t)

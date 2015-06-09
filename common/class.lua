@@ -490,7 +490,6 @@ local function build_nested_generics_type(t)
 	elseif is_primitive_type(t) then
 		return ffi.typeof(t)
 	else
-		logger.warn('t = ', t)
 		return ffi.typeof(("struct _%s *"):format(t))
 	end
 end
@@ -520,7 +519,7 @@ function composer_mt:decl()
 			table.insert(parm_types, pt)
 		end
 		table.insert(declstr, ("} %s;"):format(self.name))
-		logger.report(table.concat(declstr))
+		scplog(table.concat(declstr))
 		ffi.cdef(table.concat(declstr), unpack(parm_types))
 	end
 end
@@ -557,9 +556,6 @@ function vault_mt:initialize(datas)
 	--scplog('end vault init', self.typeclass.name)
 end
 function vault_mt:GetFixData(id)
-	if not self.types then
-		logger.error('types not initialized')
-	end
 	return self.types[id]
 end
 
@@ -574,9 +570,6 @@ function factory_mt:Create(id)
 	end
 	local t = self.vault:GetFixData(id)
 	if not t then
-		for vid, _ in pairs(self.vault.types) do
-			logger.info('not found', id, vid)
-		end
 		error("id does not exists:"..id)
 	end
 	local base_class_name = self.objclass.name
@@ -643,7 +636,6 @@ function _M.load_all_decls()
 	-- TODO : unify pattern spec
 	local pattern = ServerMode and ".*%.lua$" or "*.lua"
 	grep("data/", pattern, function (f)
-		scplog('f', f)
 		local tmp = f:gsub('//+', '/'):match("data/(.+)%.lua$")
 		local ok, r = xpcall(require, load_decl_error_handler, ('data.'..tmp:gsub('/', '.')))
 		if not ok then

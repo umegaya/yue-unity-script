@@ -780,7 +780,6 @@ function json.use_lpeg ()
     state.objectmeta, state.arraymeta = optionalmetatables(...)
     local obj, retpos = pegmatch (DecodeValue, str, pos, nullval, state)
     if state.msg then
-    print('error', state.msg, str)
       return nil, state.pos, state.msg
     else
       return obj, retpos

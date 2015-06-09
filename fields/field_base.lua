@@ -2,7 +2,6 @@ local field_base = behavior.new()
 
 -- base initialization 
 function field_base:initialize(data)
-	print(data.Objectives, data.Objectives.__IsList__)
 	for id in iter(data.Objectives) do
 		self.Objectives:Add(id, ObjectivesFactory:Create(id))
 	end
