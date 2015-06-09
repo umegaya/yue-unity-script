@@ -1,4 +1,6 @@
+package.path=_G.__SearchPath..'?.lua;'..package.path
 require 'common.compat_client' -- compatibility layer for client
+
 -- setup global modules
 _G.behavior = require 'common.behavior'
 _G.class = require 'common.class'

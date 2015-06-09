@@ -133,6 +133,7 @@ function game_user:play_event(type, payload)
 	if _G.ServerMode then
 		return self.Peer:notify_Play(type, payload)
 	else
+	--scplog('play_evesnt', type)
 		return self.Peer:PlayLocal(type, payload)
 	end
 end

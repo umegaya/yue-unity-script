@@ -1,8 +1,13 @@
+-- caution : if you give non-existent namespace name to import, *UnityEditor crashes!!*
 import('Assembly-CSharp') -- disabled for server code
 import('UnityEngine')
-import('ScriptEngine')
 import('System.IO')
 import = function () end -- script writer will be sandboxed by this.
+
+-- script search path
+_G.ScriptLoader = {
+	SearchPath = _G.__SearchPath
+}
 
 -- compatibility for lua 5.1 and 5.2
 _G.unpack = table.unpack
