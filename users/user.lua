@@ -10,8 +10,7 @@ function user:leave_team()
 end
 function user:close()
 	if ServerMode then
-		-- TODO : do something to connection
-		luact.close_peer()
+		luact.close_peer(self.Peer)
 	end
 end
 

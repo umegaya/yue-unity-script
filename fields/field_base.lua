@@ -56,13 +56,19 @@ function field_base:login(id, peer, user_data)
 		error('field already closed')
 	end
 	scplog('enter: user_id', id)
-	local user = ObjectsFactory:Create("user")
-	user.Id = id
-	user.Peer = peer
-	user.Field = self
-	user:initialize(user_data)
-	local cell = self:CellAt(user.Team:pop_point(user))
-	user:enter_to(cell)
+	local user = self:FindObject(id)
+	if not user then
+		user = ObjectsFactory:Create("user")
+		user.Id = id
+		user.Peer = peer
+		user.Field = self
+		user:initialize(user_data)
+		local cell = self:CellAt(user.Team:pop_point(user))
+		user:enter_to(cell)
+	else
+		-- peer should be replaced because older one get invalid now.
+		user.Peer = peer
+	end
 	user:init_event(self)
 end
 -- exit user when field is finished
