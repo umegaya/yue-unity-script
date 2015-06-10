@@ -62,7 +62,7 @@ function game_user:invoke_command(cmd)
 		self.WaitSec = wait_sec or self.Type.WaitSec
 		return self.WaitSec
 	else
-		self:error_event({'cooldown required', now - self.LastCmdTime, self.WaitSec})
+		self:error_event('cooldown required', now - self.LastCmdTime, self.WaitSec)
 		return now - self.LastCmdTime
 	end
 end
@@ -161,8 +161,8 @@ end
 function game_user:progress_event(payload)
 	return self:play_event("progress", payload)
 end
-function game_user:error_event(obj)
-	return self:play_event("error", obj)
+function game_user:error_event(msg, ...)
+	return self:play_event("error", { msg = msg, args = {...}})
 end
 
 return game_user
