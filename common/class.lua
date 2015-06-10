@@ -634,7 +634,7 @@ local function load_decl_error_handler(e)
 end
 function _M.load_all_decls()
 	-- TODO : unify pattern spec
-	local pattern = ServerMode and ".*%.lua$" or "*.lua"
+	local pattern = _G.ServerMode and ".*%.lua$" or "*.lua"
 	grep("data/", pattern, function (f)
 		local tmp = f:gsub('//+', '/'):match("data/(.+)%.lua$")
 		local ok, r = xpcall(require, load_decl_error_handler, ('data.'..tmp:gsub('/', '.')))

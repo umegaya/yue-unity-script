@@ -52,6 +52,9 @@ end
 
 -- enter logged in user. 
 function field_base:login(id, peer, user_data)
+	if self.Finished then
+		error('field already closed')
+	end
 	scplog('enter: user_id', id)
 	local user = ObjectsFactory:Create("user")
 	user.Id = id
