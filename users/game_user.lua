@@ -113,6 +113,7 @@ function game_user:build_scene_payload()
 		enemy_side[team_id] = data
 	end
 	return { 
+		UserId = self.Id,
 		UserSide = user_side, EnemySide = enemy_side,
 		Terrain = terrain, 
 		X = self.X, Y = self.Y,

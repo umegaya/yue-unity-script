@@ -193,7 +193,7 @@ function character:display_data()
   	return {
 		TargetId = self.Id, -- using this for making some action
 		Id = self.Type.Id,
-		Display = self.Type.DisplayPosition, -- user or enemy
+		DispPos = self.Type.DisplaySide, -- user or enemy
 		Name = self.Type.Name,
 		TeamId = self.Team.Id,
 		MaxHp = self.MaxHp,
